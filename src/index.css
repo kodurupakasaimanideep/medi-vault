@@ -1189,6 +1189,18 @@ body {
   cursor: pointer;
 }
 
+/* DOB Grid for Year/Month/Day dropdowns */
+.pdm-dob-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+.pdm-dob-grid select {
+  padding-left: 0.9rem;
+  cursor: pointer;
+}
+
 /* Gender Grid */
 .pdm-gender-grid {
   display: grid;

@@ -491,3 +491,15 @@
   .pi-header { flex-direction: column; align-items: flex-start; }
   .pi-save-btn { width: 100%; justify-content: center; }
 }
+
+/* DOB Grid for Year/Month/Day dropdowns */
+.pi-dob-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  width: 100%;
+}
+.pi-dob-select {
+  padding-left: 1rem !important;
+  cursor: pointer;
+}

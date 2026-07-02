@@ -46,6 +46,28 @@ function calcAge(dob) {
   return age > 0 && age < 130 ? String(age) : '';
 }
 
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 125 }, (_, i) => currentYear - i);
+const months = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const getDaysInMonth = (y, m) => {
+  if (!y || !m) return 31;
+  return new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+};
+
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════ */
@@ -72,6 +94,50 @@ export default function PersonalDetailsModal({ userId, onComplete }) {
     const computed = calcAge(val);
     if (computed) setAge(computed);
   };
+
+  const dobYear = dob ? dob.split('-')[0] : '';
+  const dobMonth = dob ? dob.split('-')[1] : '';
+  const dobDay = dob ? dob.split('-')[2] : '';
+
+  const handleYearChange = (newYear) => {
+    if (!newYear) {
+      setDob('');
+      return;
+    }
+    const m = dobMonth || '01';
+    const d = dobDay || '01';
+    const newDob = `${newYear}-${m}-${d}`;
+    handleDobChange(newDob);
+  };
+
+  const handleMonthChange = (newMonth) => {
+    const y = dobYear || String(new Date().getFullYear());
+    const d = dobDay || '01';
+    if (!newMonth) {
+      const newDob = `${y}-01-${d}`;
+      handleDobChange(newDob);
+      return;
+    }
+    const maxDays = getDaysInMonth(y, newMonth);
+    const clampedDay = parseInt(d, 10) > maxDays ? String(maxDays).padStart(2, '0') : d;
+    const newDob = `${y}-${newMonth}-${clampedDay}`;
+    handleDobChange(newDob);
+  };
+
+  const handleDayChange = (newDay) => {
+    const y = dobYear || String(new Date().getFullYear());
+    const m = dobMonth || '01';
+    if (!newDay) {
+      const newDob = `${y}-${m}-01`;
+      handleDobChange(newDob);
+      return;
+    }
+    const newDob = `${y}-${m}-${newDay}`;
+    handleDobChange(newDob);
+  };
+
+  const daysInMonth = getDaysInMonth(dobYear, dobMonth);
+  const days = Array.from({ length: daysInMonth }, (_, i) => String(i + 1).padStart(2, '0'));
 
   /* ── Step 1 validation & advance ─────────────────────────────── */
   const handleNextStep = () => {
@@ -261,16 +327,36 @@ export default function PersonalDetailsModal({ userId, onComplete }) {
               <label className="pdm-label">
                 <Calendar size={13} /> Date of Birth
               </label>
-              <div className="pdm-input-wrap">
-                <Calendar size={16} className="pdm-input-icon" />
-                <input
-                  id="pdm-dob"
-                  type="date"
+              <div className="pdm-dob-grid">
+                <select
+                  id="pdm-dob-year"
                   className="pdm-input"
-                  value={dob}
-                  max={new Date().toISOString().split('T')[0]}
-                  onChange={e => handleDobChange(e.target.value)}
-                />
+                  value={dobYear}
+                  onChange={e => handleYearChange(e.target.value)}
+                >
+                  <option value="">Year</option>
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+
+                <select
+                  id="pdm-dob-month"
+                  className="pdm-input"
+                  value={dobMonth}
+                  onChange={e => handleMonthChange(e.target.value)}
+                >
+                  <option value="">Month</option>
+                  {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+
+                <select
+                  id="pdm-dob-day"
+                  className="pdm-input"
+                  value={dobDay}
+                  onChange={e => handleDayChange(e.target.value)}
+                >
+                  <option value="">Day</option>
+                  {days.map(d => <option key={d} value={d}>{parseInt(d, 10)}</option>)}
+                </select>
               </div>
             </div>
 

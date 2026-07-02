@@ -23,6 +23,38 @@ const InputField = ({ label, labelIcon, icon, children, textarea }) => (
   </div>
 );
 
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: 125 }, (_, i) => currentYear - i);
+const months = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const getDaysInMonth = (y, m) => {
+  if (!y || !m) return 31;
+  return new Date(parseInt(y, 10), parseInt(m, 10), 0).getDate();
+};
+
+function calcAge(dob) {
+  if (!dob) return '';
+  const birthDate = new Date(dob);
+  const today     = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+  return age > 0 && age < 130 ? String(age) : '';
+}
+
 export default function PatientInfo({ user }) {
   const [isSaving, setIsSaving]     = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -101,6 +133,67 @@ export default function PatientInfo({ user }) {
     });
   };
 
+  const dobYear = form.dob ? form.dob.split('-')[0] : '';
+  const dobMonth = form.dob ? form.dob.split('-')[1] : '';
+  const dobDay = form.dob ? form.dob.split('-')[2] : '';
+
+  const handleDobPartChange = (e) => {
+    const { name, value } = e.target;
+    const parts = form.dob ? form.dob.split('-') : ['', '', ''];
+    if (name === 'dobYear') {
+      if (!value) {
+        setForm(prev => ({ ...prev, dob: '', age: '' }));
+        return;
+      }
+      parts[0] = value;
+      if (!parts[1]) parts[1] = '01';
+      if (!parts[2]) parts[2] = '01';
+    } else if (name === 'dobMonth') {
+      const y = parts[0] || String(new Date().getFullYear());
+      if (!value) {
+        parts[1] = '01';
+      } else {
+        parts[1] = value;
+      }
+      const maxDays = getDaysInMonth(y, parts[1]);
+      if (parts[2] && parseInt(parts[2], 10) > maxDays) {
+        parts[2] = String(maxDays).padStart(2, '0');
+      } else if (!parts[2]) {
+        parts[2] = '01';
+      }
+      parts[0] = y;
+    } else if (name === 'dobDay') {
+      const y = parts[0] || String(new Date().getFullYear());
+      const m = parts[1] || '01';
+      if (!value) {
+        parts[2] = '01';
+      } else {
+        parts[2] = value;
+      }
+      parts[0] = y;
+      parts[1] = m;
+    }
+
+    const newDob = parts.join('-');
+    const computedAge = calcAge(newDob);
+    setForm(prev => {
+      const next = { ...prev, dob: newDob };
+      if (computedAge) {
+        next.age = computedAge;
+        // Trigger sidebar avatar preview if sex is set
+        if (next.sex) {
+          window.dispatchEvent(new CustomEvent('mv_avatar_preview', {
+            detail: { gender: next.sex, age: computedAge }
+          }));
+        }
+      }
+      return next;
+    });
+  };
+
+  const daysInMonth = getDaysInMonth(dobYear, dobMonth);
+  const days = Array.from({ length: daysInMonth }, (_, i) => String(i + 1).padStart(2, '0'));
+
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
@@ -175,6 +268,9 @@ export default function PatientInfo({ user }) {
       sexOther: "Other",
       sexPreferNot: "Prefer not to say",
       dob: "Date of Birth",
+      dobYear: "Year",
+      dobMonth: "Month",
+      dobDay: "Day",
       username: "Username (System)",
       phone: "Phone Number",
       height: "Height",
@@ -266,6 +362,9 @@ export default function PatientInfo({ user }) {
       sexOther: "ఇతరాలు",
       sexPreferNot: "చెప్పడానికి ఇష్టపడలేదు",
       dob: "పుట్టిన తేదీ",
+      dobYear: "సంవత్సరం",
+      dobMonth: "నెల",
+      dobDay: "రోజు",
       username: "యూజర్‌నేమ్ (సిస్టమ్)",
       phone: "ఫోన్ నంబర్",
       height: "ఎత్తు",
@@ -357,6 +456,9 @@ export default function PatientInfo({ user }) {
       sexOther: "अन्य",
       sexPreferNot: "बताना नहीं चाहते",
       dob: "जन्म तिथि",
+      dobYear: "वर्ष",
+      dobMonth: "महीना",
+      dobDay: "दिन",
       username: "यूज़रनेम (सिस्टम)",
       phone: "फ़ोन नंबर",
       height: "ऊंचाई",
@@ -448,6 +550,9 @@ export default function PatientInfo({ user }) {
       sexOther: "Otro",
       sexPreferNot: "Prefiero no decirlo",
       dob: "Fecha de Nacimiento",
+      dobYear: "Año",
+      dobMonth: "Mes",
+      dobDay: "Día",
       username: "Usuario (Sistema)",
       phone: "Número de Teléfono",
       height: "Altura",
@@ -708,11 +813,38 @@ export default function PatientInfo({ user }) {
             </InputField>
           </div>
 
-          <InputField label={ct('dob')} icon={<Calendar size={15} />}>
-            <input
-              type="date" name="dob" value={form.dob} onChange={handle}
-              className="pi-input"
-            />
+          <InputField label={ct('dob')} labelIcon={<Calendar size={15} />}>
+            <div className="pi-dob-grid">
+              <select
+                name="dobYear"
+                value={dobYear}
+                onChange={handleDobPartChange}
+                className="pi-select pi-dob-select"
+              >
+                <option value="">{ct('dobYear')}</option>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+
+              <select
+                name="dobMonth"
+                value={dobMonth}
+                onChange={handleDobPartChange}
+                className="pi-select pi-dob-select"
+              >
+                <option value="">{ct('dobMonth')}</option>
+                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+
+              <select
+                name="dobDay"
+                value={dobDay}
+                onChange={handleDobPartChange}
+                className="pi-select pi-dob-select"
+              >
+                <option value="">{ct('dobDay')}</option>
+                {days.map(d => <option key={d} value={d}>{parseInt(d, 10)}</option>)}
+              </select>
+            </div>
           </InputField>
 
           <InputField label={ct('username')} icon={<Mail size={15} />}>
