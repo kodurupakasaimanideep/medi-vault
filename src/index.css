@@ -29,6 +29,12 @@
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* Ensure select option elements are always visible (dark text on white background) */
+select option {
+  color: #1e293b !important;
+  background-color: #ffffff !important;
+}
+
 html {
   transition: background-color 0.3s ease;
 }
