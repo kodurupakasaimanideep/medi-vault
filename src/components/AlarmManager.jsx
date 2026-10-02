@@ -19,33 +19,39 @@ class PeacefulSoundEngine {
     if (!this.ctx || this.ctx.state === 'closed') {
       this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx.state === 'suspended') {
+      try { this.ctx.resume(); } catch(e) {}
+    }
     return this.ctx;
   }
 
   // Helper: create a soft sine tone with smooth attack + long decay
   _softTone(freq, startTime, duration, vol = 0.3, type = 'sine') {
-    const ctx = this._ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.001, startTime);
-    gain.gain.linearRampToValueAtTime(vol, startTime + duration * 0.15); // smooth attack
-    gain.gain.setValueAtTime(vol, startTime + duration * 0.5);
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration); // long decay
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(startTime);
-    osc.stop(startTime + duration + 0.05);
-    this.nodes.push(osc, gain);
+    if (!this.running) return;
+    try {
+      const ctx = this._ctx();
+      if (!ctx || ctx.state === 'closed') return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.001, startTime);
+      gain.gain.linearRampToValueAtTime(vol, startTime + duration * 0.15);
+      gain.gain.setValueAtTime(vol, startTime + duration * 0.5);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.05);
+      this.nodes.push(osc, gain);
+    } catch (e) {}
   }
 
   // 🎵 1. GENTLE CHIME — soft bell trio, peaceful and clear
   playGentleChime(vol = 1.0) {
     const ctx = this._ctx();
     this.running = true;
-    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 (major chord)
+    const notes = [523.25, 659.25, 783.99];
 
     const play = () => {
       if (!this.running) return;
@@ -63,8 +69,7 @@ class PeacefulSoundEngine {
   playMorningBells(vol = 1.0) {
     const ctx = this._ctx();
     this.running = true;
-    // Pentatonic scale — always sounds beautiful
-    const notes = [261.63, 329.63, 392.00, 523.25, 659.25]; // C4,E4,G4,C5,E5
+    const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
 
     const play = () => {
       if (!this.running) return;
@@ -82,12 +87,11 @@ class PeacefulSoundEngine {
   playSoftHarp(vol = 1.0) {
     const ctx = this._ctx();
     this.running = true;
-    const notes = [329.63, 415.30, 523.25, 659.25, 830.61]; // E4,Ab4,C5,E5,Ab5
+    const notes = [329.63, 415.30, 523.25, 659.25, 830.61];
 
     const play = () => {
       if (!this.running) return;
       const now = ctx.currentTime;
-      // Forward then reverse arpeggio
       const seq = [...notes, ...notes.slice().reverse()];
       seq.forEach((freq, i) => {
         this._softTone(freq, now + i * 0.18, 1.5, vol * 0.22);
@@ -106,7 +110,6 @@ class PeacefulSoundEngine {
     const play = () => {
       if (!this.running) return;
       const now = ctx.currentTime;
-      // Fundamental + subtle overtones for bowl character
       [[220, 0], [330, 0.05], [440, 0.08]].forEach(([freq, offset]) => {
         this._softTone(freq, now + offset, 4.0, vol * (offset === 0 ? 0.35 : 0.12));
       });
@@ -124,24 +127,24 @@ class PeacefulSoundEngine {
     const play = () => {
       if (!this.running) return;
       const now = ctx.currentTime;
-      // Low gentle wave-like sweep
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(130, now);
-      osc.frequency.linearRampToValueAtTime(180, now + 2.0);
-      osc.frequency.linearRampToValueAtTime(130, now + 4.0);
-      gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(vol * 0.3, now + 1.0);
-      gain.gain.linearRampToValueAtTime(vol * 0.3, now + 3.5);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 4.2);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 4.3);
-      this.nodes.push(osc, gain);
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(130, now);
+        osc.frequency.linearRampToValueAtTime(180, now + 2.0);
+        osc.frequency.linearRampToValueAtTime(130, now + 4.0);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(vol * 0.3, now + 1.0);
+        gain.gain.linearRampToValueAtTime(vol * 0.3, now + 3.5);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 4.2);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 4.3);
+        this.nodes.push(osc, gain);
+      } catch (e) {}
 
-      // Soft harmonic shimmer on top
       this._softTone(392.00, now + 0.5, 3.0, vol * 0.15);
       this._softTone(523.25, now + 1.5, 2.5, vol * 0.12);
     };
@@ -159,7 +162,6 @@ class PeacefulSoundEngine {
     const play = () => {
       if (!this.running) return;
       const now = ctx.currentTime;
-      // Pick 3-4 random chime notes at random offsets
       const count = 3 + Math.floor(Math.random() * 2);
       for (let i = 0; i < count; i++) {
         const freq = chimePitches[Math.floor(Math.random() * chimePitches.length)];
@@ -176,14 +178,13 @@ class PeacefulSoundEngine {
   playDreamscape(vol = 1.0) {
     const ctx = this._ctx();
     this.running = true;
-    // Lush Cmaj9 voicing spread over 3 octaves
     const layers = [
-      [130.81, 3.5],   // C3 — deep bass foundation
-      [196.00, 3.0],   // G3
-      [261.63, 2.8],   // C4
-      [329.63, 2.5],   // E4
-      [392.00, 2.2],   // G4
-      [523.25, 2.0],   // C5 — bright top layer
+      [130.81, 3.5],
+      [196.00, 3.0],
+      [261.63, 2.8],
+      [329.63, 2.5],
+      [392.00, 2.2],
+      [523.25, 2.0],
     ];
 
     const play = () => {
@@ -215,9 +216,31 @@ class PeacefulSoundEngine {
     this.running = false;
     this.intervals.forEach(id => clearInterval(id));
     this.intervals = [];
-    this.nodes.forEach(n => { try { n.disconnect(); } catch(e) {} });
+
+    // Instantly zero out and disconnect all scheduled audio nodes
+    this.nodes.forEach(n => {
+      try {
+        if (n.gain) {
+          n.gain.cancelScheduledValues(0);
+          n.gain.setValueAtTime(0, 0);
+        }
+        if (n.stop && typeof n.stop === 'function') {
+          n.stop(0);
+        }
+        if (n.disconnect && typeof n.disconnect === 'function') {
+          n.disconnect();
+        }
+      } catch (e) {}
+    });
     this.nodes = [];
-    if (this.ctx) { try { this.ctx.close(); } catch(e) {} this.ctx = null; }
+
+    if (this.ctx) {
+      try {
+        if (this.ctx.suspend) this.ctx.suspend();
+        if (this.ctx.close && this.ctx.state !== 'closed') this.ctx.close();
+      } catch (e) {}
+      this.ctx = null;
+    }
   }
 }
 
@@ -250,87 +273,34 @@ export default function AlarmManager() {
   const audioRef = useRef(null);
   const dismissTimerRef = useRef(null);
   const notificationRef = useRef(null);
+  const dismissedAlarmsRef = useRef(new Set()); // Prevents re-triggering dismissed alarms today
 
-  // ── triggerAlarm (stable ref so SW callback can call it) ──
-  const triggerAlarm = useCallback((alarm) => {
-    if (!alarm) return;
-    setActiveAlarm((current) => {
-      // Don't re-trigger if same alarm is already showing
-      if (current && current.id === alarm.id) return current;
-      return alarm;
-    });
-    startSound(alarm);
-    showNativeNotification(alarm);
-    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
-    dismissTimerRef.current = setTimeout(() => {
-      stopSound();
-      setActiveAlarm(null);
-      setAudioPlaying(false);
-    }, 60000);
-  }, []); // eslint-disable-line
-
-  useEffect(() => {
-    // Request notification permission so background SW notifications work
-    if ('Notification' in window && Notification.permission !== 'granted') {
-      requestNotificationPermission();
+  const stopSound = useCallback(() => {
+    if (soundEngineRef.current) {
+      try { soundEngineRef.current.stop(); } catch (e) {}
+      soundEngineRef.current = null;
     }
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = '';
+      } catch (e) {}
+    }
+    if (notificationRef.current) {
+      try { notificationRef.current.close(); } catch (e) {}
+      notificationRef.current = null;
+    }
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+    setAudioPlaying(false);
+  }, []);
 
-    const alarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
-    // Sync alarms to service worker (persisted in SW IndexedDB)
-    const alarms = JSON.parse(localStorage.getItem(alarmKey) || localStorage.getItem('medivault_alarms') || '[]');
-    syncTabletAlarmsToSW(alarms, uid);
+  const startSound = useCallback((alarm) => {
+    stopSound(); // Ensure clean slate
 
-    // Register with SW manager so it can trigger this alarm when tab re-opens
-    // after a notification was fired while the tab was closed
-    registerSoundCallback('playTabletAlarm', triggerAlarm);
-
-    // ── In-page alarm checker (fires when tab IS open) ──
-    const checkAlarms = () => {
-      const activeAlarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
-      const savedAlarms = JSON.parse(localStorage.getItem(activeAlarmKey) || localStorage.getItem('medivault_alarms') || '[]');
-      const now         = new Date();
-      const currentMin  = now.getHours() * 60 + now.getMinutes();
-      const todayStr    = now.toISOString().split('T')[0];
-
-      let updatedList = [...savedAlarms];
-      let needsSave   = false;
-
-      savedAlarms.forEach((alarm) => {
-        if (!alarm.active) return;
-        const [h, m] = alarm.time.split(':').map(Number);
-        const diff   = currentMin - (h * 60 + m);
-        if (diff >= 0 && diff <= 5 && alarm.lastTriggered !== todayStr) {
-          triggerAlarm(alarm);
-          needsSave = true;
-          updatedList = updatedList.map((a) =>
-            a.id === alarm.id ? { ...a, lastTriggered: todayStr } : a
-          );
-        }
-      });
-
-      if (needsSave) {
-        localStorage.setItem(activeAlarmKey, JSON.stringify(updatedList));
-        localStorage.setItem('medivault_alarms', JSON.stringify(updatedList));
-        syncTabletAlarmsToSW(updatedList, uid);
-      }
-    };
-
-    const intervalId = setInterval(checkAlarms, 1000);
-
-    // ── Listen for SW-fired alarms (tab was closed, notification clicked → tab opened) ──
-    const handleSwAlarm = (e) => triggerAlarm(e.detail);
-    const handleTestAlarm = (e) => triggerAlarm(e.detail);
-    window.addEventListener('medivault_sw_alarm', handleSwAlarm);
-    window.addEventListener('medivault_test_alarm', handleTestAlarm);
-
-    return () => {
-      clearInterval(intervalId);
-      window.removeEventListener('medivault_sw_alarm', handleSwAlarm);
-      window.removeEventListener('medivault_test_alarm', handleTestAlarm);
-    };
-  }, [triggerAlarm, uid]);
-
-  const startSound = (alarm) => {
     const baseVol = parseFloat(localStorage.getItem('medivault_alarm_volume') || '1.0');
     const globalVol = parseFloat(localStorage.getItem('mv_global_volume') ?? 1.0);
     const volume = baseVol * globalVol;
@@ -353,40 +323,152 @@ export default function AlarmManager() {
     }
 
     // Synthesized peaceful sounds
-    if (soundEngineRef.current) soundEngineRef.current.stop();
-    soundEngineRef.current = new PeacefulSoundEngine();
+    const engine = new PeacefulSoundEngine();
+    soundEngineRef.current = engine;
     try {
-      soundEngineRef.current.play(soundType, volume);
+      engine.play(soundType, volume);
       setAudioPlaying(true);
     } catch (e) {
       console.error('Sound engine error:', e);
       setAudioPlaying(false);
     }
-  };
+  }, [stopSound]);
 
-  const stopSound = () => {
-    if (soundEngineRef.current) { soundEngineRef.current.stop(); soundEngineRef.current = null; }
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current.currentTime = 0; }
-    if (notificationRef.current) { notificationRef.current.close(); notificationRef.current = null; }
-    if (dismissTimerRef.current) { clearTimeout(dismissTimerRef.current); dismissTimerRef.current = null; }
-    setAudioPlaying(false);
-  };
-
-  const handleManualPlay = () => { if (activeAlarm) startSound(activeAlarm); };
-  const handleDismiss = () => { stopSound(); setActiveAlarm(null); };
-
-  const showNativeNotification = (alarm) => {
+  const showNativeNotification = useCallback((alarm) => {
     if ('Notification' in window && Notification.permission === 'granted') {
-      const soundInfo = ALARM_SOUNDS.find(s => s.value === alarm.music);
-      const notif = new Notification('💊 Medicine Reminder!', {
-        body: `${alarm.time} — Time to take: ${alarm.tablet}\n♪ ${soundInfo?.label || alarm.music}`,
-        icon: '/favicon.ico',
-        requireInteraction: true,
-      });
-      notificationRef.current = notif;
-      notif.onclick = () => { window.focus(); stopSound(); setActiveAlarm(null); notif.close(); };
+      try {
+        const soundInfo = ALARM_SOUNDS.find(s => s.value === alarm.music);
+        const notif = new Notification('💊 Medicine Reminder!', {
+          body: `${alarm.time} — Time to take: ${alarm.tablet}\n♪ ${soundInfo?.label || alarm.music}`,
+          icon: '/favicon.ico',
+          requireInteraction: true,
+        });
+        notificationRef.current = notif;
+        notif.onclick = () => {
+          window.focus();
+          stopSound();
+          setActiveAlarm(null);
+          notif.close();
+        };
+      } catch (e) {}
     }
-  };
+  }, [stopSound]);
+
+  // ── triggerAlarm (stable ref so SW callback can call it) ──
+  const triggerAlarm = useCallback((alarm) => {
+    if (!alarm) return;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const dismissKey = `${alarm.id}_${todayStr}`;
+
+    // If alarm was already dismissed today, do not trigger again
+    if (dismissedAlarmsRef.current.has(dismissKey)) {
+      return;
+    }
+
+    setActiveAlarm((current) => {
+      if (current && current.id === alarm.id) return current;
+      return alarm;
+    });
+
+    startSound(alarm);
+    showNativeNotification(alarm);
+
+    if (dismissTimerRef.current) clearTimeout(dismissTimerRef.current);
+    dismissTimerRef.current = setTimeout(() => {
+      stopSound();
+      setActiveAlarm(null);
+    }, 60000);
+  }, [startSound, showNativeNotification, stopSound]);
+
+  const handleDismiss = useCallback(() => {
+    const current = activeAlarm;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    if (current) {
+      const dismissKey = `${current.id}_${todayStr}`;
+      dismissedAlarmsRef.current.add(dismissKey);
+
+      // Persist lastTriggered so checkAlarms and SW never re-fire it today
+      try {
+        const activeAlarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
+        const savedAlarms = JSON.parse(localStorage.getItem(activeAlarmKey) || localStorage.getItem('medivault_alarms') || '[]');
+        const updated = savedAlarms.map(a => a.id === current.id ? { ...a, lastTriggered: todayStr } : a);
+        localStorage.setItem(activeAlarmKey, JSON.stringify(updated));
+        localStorage.setItem('medivault_alarms', JSON.stringify(updated));
+        syncTabletAlarmsToSW(updated, uid);
+      } catch (e) {}
+    }
+
+    stopSound();
+    setActiveAlarm(null);
+    window.dispatchEvent(new CustomEvent('medivault_stop_all_audio'));
+  }, [activeAlarm, stopSound, uid]);
+
+  useEffect(() => {
+    // Request notification permission so background SW notifications work
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      requestNotificationPermission();
+    }
+
+    const alarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
+    const alarms = JSON.parse(localStorage.getItem(alarmKey) || localStorage.getItem('medivault_alarms') || '[]');
+    syncTabletAlarmsToSW(alarms, uid);
+
+    registerSoundCallback('playTabletAlarm', triggerAlarm);
+
+    // ── In-page alarm checker (fires when tab IS open) ──
+    const checkAlarms = () => {
+      const activeAlarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
+      const savedAlarms = JSON.parse(localStorage.getItem(activeAlarmKey) || localStorage.getItem('medivault_alarms') || '[]');
+      const now         = new Date();
+      const currentMin  = now.getHours() * 60 + now.getMinutes();
+      const todayStr    = now.toISOString().split('T')[0];
+
+      let updatedList = [...savedAlarms];
+      let needsSave   = false;
+
+      savedAlarms.forEach((alarm) => {
+        if (!alarm.active) return;
+        const dismissKey = `${alarm.id}_${todayStr}`;
+        if (dismissedAlarmsRef.current.has(dismissKey)) return;
+
+        const [h, m] = alarm.time.split(':').map(Number);
+        const diff   = currentMin - (h * 60 + m);
+        if (diff >= 0 && diff <= 5 && alarm.lastTriggered !== todayStr) {
+          triggerAlarm(alarm);
+          needsSave = true;
+          updatedList = updatedList.map((a) =>
+            a.id === alarm.id ? { ...a, lastTriggered: todayStr } : a
+          );
+        }
+      });
+
+      if (needsSave) {
+        localStorage.setItem(activeAlarmKey, JSON.stringify(updatedList));
+        localStorage.setItem('medivault_alarms', JSON.stringify(updatedList));
+        syncTabletAlarmsToSW(updatedList, uid);
+      }
+    };
+
+    const intervalId = setInterval(checkAlarms, 1000);
+
+    const handleSwAlarm = (e) => triggerAlarm(e.detail);
+    const handleTestAlarm = (e) => triggerAlarm(e.detail);
+    const handleGlobalStop = () => stopSound();
+
+    window.addEventListener('medivault_sw_alarm', handleSwAlarm);
+    window.addEventListener('medivault_test_alarm', handleTestAlarm);
+    window.addEventListener('medivault_stop_all_audio', handleGlobalStop);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener('medivault_sw_alarm', handleSwAlarm);
+      window.removeEventListener('medivault_test_alarm', handleTestAlarm);
+      window.removeEventListener('medivault_stop_all_audio', handleGlobalStop);
+    };
+  }, [triggerAlarm, stopSound, uid]);
 
   if (!activeAlarm) return null;
 
@@ -413,6 +495,27 @@ export default function AlarmManager() {
         position: 'relative',
         overflow: 'hidden'
       }}>
+        {/* Top-Right Quick Close Button */}
+        <button
+          onClick={handleDismiss}
+          onTouchEnd={(e) => { e.preventDefault(); handleDismiss(); }}
+          style={{
+            position: 'absolute', top: '18px', right: '18px',
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            color: '#cbd5e1',
+            width: '36px', height: '36px',
+            borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 10,
+            transition: 'all 0.2s'
+          }}
+          title="Close Alarm"
+        >
+          <X size={18} />
+        </button>
+
         {/* Ambient glow orbs */}
         <div style={{ position: 'absolute', top: '-60px', left: '50%', transform: 'translateX(-50%)', width: '280px', height: '280px', background: `radial-gradient(circle, ${alarmColor}22, transparent 70%)`, pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '-80px', right: '-40px', width: '200px', height: '200px', background: `radial-gradient(circle, #38bdf822, transparent 70%)`, pointerEvents: 'none' }} />
@@ -507,9 +610,10 @@ export default function AlarmManager() {
             {audioPlaying ? '♪ Playing — Tap to Replay' : '▶ Play Alarm Sound'}
           </button>
 
-          {/* Dismiss */}
+          {/* Dismiss button with both click and touch support */}
           <button
             onClick={handleDismiss}
+            onTouchEnd={(e) => { e.preventDefault(); handleDismiss(); }}
             style={{
               background: 'linear-gradient(135deg, #ef4444, #dc2626)',
               color: 'white', padding: '0.9rem 2rem',
