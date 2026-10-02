@@ -13,7 +13,7 @@
    5. Instant Sound Playback: When user taps notification or opens app, plays rich audio alarm.
 ═══════════════════════════════════════════════════════════════════ */
 
-const SW_VERSION = 'medivault-sw-v6';
+const SW_VERSION = 'medivault-sw-v7';
 const DB_NAME    = 'medivault-sw-db';
 const DB_VERSION = 2;
 

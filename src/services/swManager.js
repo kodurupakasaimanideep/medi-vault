@@ -48,6 +48,11 @@ export async function registerServiceWorker() {
     swRegistration = reg;
     console.log('[SW] Registered:', reg.scope);
 
+    // Prompt immediate update check
+    try {
+      await reg.update();
+    } catch (_) {}
+
     // Listen for ALL messages from the SW
     navigator.serviceWorker.addEventListener('message', handleSwMessage);
 
