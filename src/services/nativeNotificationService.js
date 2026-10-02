@@ -386,6 +386,19 @@ export async function cancelAllNativeNotifications() {
 }
 
 /**
+ * Clear all delivered notifications from Android notification shade
+ */
+export async function dismissNativeDeliveredNotifications() {
+  if (!isNativeApp()) return;
+  try {
+    await LocalNotifications.removeAllDeliveredNotifications();
+    console.log('[NativeNotif] Cleared all delivered notifications from notification tray');
+  } catch (err) {
+    console.error('[NativeNotif] Error clearing delivered notifications:', err);
+  }
+}
+
+/**
  * Sync all user reminders on app start or login
  */
 export async function syncNativeUserReminders(userId) {

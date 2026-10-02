@@ -226,6 +226,19 @@ self.addEventListener('message', (event) => {
   if (type === 'CLEAR_ALL_PENDING') {
     event.waitUntil(clearAllPending());
   }
+
+  if (type === 'CLOSE_ALARM_NOTIFICATIONS') {
+    event.waitUntil(
+      (async () => {
+        const notifications = await self.registration.getNotifications();
+        notifications.forEach((n) => {
+          if (!payload?.alarmId || n.data?.alarmId === payload.alarmId || n.tag?.includes('tablet-alarm') || n.title?.includes('Medicine')) {
+            n.close();
+          }
+        });
+      })()
+    );
+  }
 });
 
 async function clearAllPending() {
@@ -417,12 +430,20 @@ self.addEventListener('notificationclick', (event) => {
 
   // Action: Medicine Taken / Dismissed
   if (action === 'taken' || action === 'dismiss') {
-    if (data.type === 'tablet' && data.alarmId) {
-      dbDelete('pending', `tablet-${data.alarmId}-${new Date().toISOString().split('T')[0]}`);
-    }
-    if (data.type === 'water' && data.reminderId) {
-      dbDelete('pending', `water-${data.reminderId}-${new Date().toISOString().split('T')[0]}`);
-    }
+    event.waitUntil(
+      (async () => {
+        if (data.type === 'tablet' && data.alarmId) {
+          await dbDelete('pending', `tablet-${data.alarmId}-${new Date().toISOString().split('T')[0]}`);
+        }
+        if (data.type === 'water' && data.reminderId) {
+          await dbDelete('pending', `water-${data.reminderId}-${new Date().toISOString().split('T')[0]}`);
+        }
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clients.forEach((c) => {
+          c.postMessage({ type: 'DISMISS_ALARM', alarmId: data.alarmId });
+        });
+      })()
+    );
     return;
   }
 

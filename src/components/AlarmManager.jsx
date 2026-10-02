@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BellRing, X, Pill, Volume2, Music2 } from 'lucide-react';
-import { syncTabletAlarmsToSW, requestNotificationPermission, registerSoundCallback } from '../services/swManager';
+import { syncTabletAlarmsToSW, requestNotificationPermission, registerSoundCallback, closeAllAlarmNotifications } from '../services/swManager';
+import { dismissNativeDeliveredNotifications } from '../services/nativeNotificationService';
 import { useAuth } from '../contexts/AuthContext';
 
 // ══════════════════════════════════════════════════════════════
@@ -399,9 +400,28 @@ export default function AlarmManager() {
         localStorage.setItem('medivault_alarms', JSON.stringify(updated));
         syncTabletAlarmsToSW(updated, uid);
       } catch (e) {}
+
+      // 1. Close system notifications in browser & Service Worker
+      try {
+        closeAllAlarmNotifications(current.id);
+      } catch (e) {}
+
+      // 2. Clear native Android notifications from notification shade
+      try {
+        dismissNativeDeliveredNotifications();
+      } catch (e) {}
     }
 
+    // 3. Stop all audio playback
     stopSound();
+
+    // 4. Close HTML5 notification if open
+    if (notificationRef.current) {
+      try { notificationRef.current.close(); } catch (e) {}
+      notificationRef.current = null;
+    }
+
+    // 5. Hide modal
     setActiveAlarm(null);
     window.dispatchEvent(new CustomEvent('medivault_stop_all_audio'));
   }, [activeAlarm, stopSound, uid]);
@@ -457,18 +477,21 @@ export default function AlarmManager() {
     const handleSwAlarm = (e) => triggerAlarm(e.detail);
     const handleTestAlarm = (e) => triggerAlarm(e.detail);
     const handleGlobalStop = () => stopSound();
+    const handleRemoteDismiss = () => handleDismiss();
 
     window.addEventListener('medivault_sw_alarm', handleSwAlarm);
     window.addEventListener('medivault_test_alarm', handleTestAlarm);
     window.addEventListener('medivault_stop_all_audio', handleGlobalStop);
+    window.addEventListener('medivault_dismiss_alarm', handleRemoteDismiss);
 
     return () => {
       clearInterval(intervalId);
       window.removeEventListener('medivault_sw_alarm', handleSwAlarm);
       window.removeEventListener('medivault_test_alarm', handleTestAlarm);
       window.removeEventListener('medivault_stop_all_audio', handleGlobalStop);
+      window.removeEventListener('medivault_dismiss_alarm', handleRemoteDismiss);
     };
-  }, [triggerAlarm, stopSound, uid]);
+  }, [triggerAlarm, handleDismiss, stopSound, uid]);
 
   if (!activeAlarm) return null;
 

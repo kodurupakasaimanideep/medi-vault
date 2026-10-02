@@ -210,6 +210,12 @@ function handleSwMessage(event) {
     window.dispatchEvent(new CustomEvent('medivault_navigate', { detail: event.data.url }));
   }
 
+  // SW is telling client tab that alarm was dismissed/taken from notification
+  if (type === 'DISMISS_ALARM') {
+    window.dispatchEvent(new CustomEvent('medivault_dismiss_alarm', { detail: { alarmId: event.data?.alarmId } }));
+    window.dispatchEvent(new CustomEvent('medivault_stop_all_audio'));
+  }
+
   // Quick-log water from notification action
   if (type === 'QUICK_LOG_WATER') {
     try {
@@ -300,6 +306,25 @@ export async function requestNotificationPermission() {
     return await Notification.requestPermission();
   } catch {
     return 'denied';
+  }
+}
+
+/**
+ * Close and clear all alarm system notifications (mobile shade & desktop center)
+ */
+export async function closeAllAlarmNotifications(alarmId = '') {
+  await sendToSW({ type: 'CLOSE_ALARM_NOTIFICATIONS', payload: { alarmId } });
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const notifications = await reg.getNotifications();
+      notifications.forEach((n) => {
+        if (!alarmId || n.data?.alarmId === alarmId || n.tag?.includes('tablet-alarm') || n.title?.includes('Medicine')) {
+          n.close();
+        }
+      });
+    } catch (_) {}
   }
 }
 
