@@ -76,7 +76,6 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
     { labelKey: 'patientInfo',   path: '/patient-info',     icon: User },
     { labelKey: 'medicalSlips',  path: '/medical-slips',    icon: FileText },
     { labelKey: 'tabletsInfo',   path: '/tablets-info',     icon: Pill },
-    { labelKey: 'diseaseExercise', path: '/medical-diseases', icon: Dumbbell },
     { labelKey: 'dietPlan',      path: '/diet-plan',        icon: Utensils },
     { labelKey: 'tabletAlarm',   path: '/tablet-alarm',     icon: Bell },
     { labelKey: 'drinkingWater', path: '/drinking-water',   icon: Droplets },

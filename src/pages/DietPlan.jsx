@@ -10,23 +10,23 @@ import { DIET_T, FOOD_T, LOCALIZED_DIET_PLANS, LOCALIZED_DIET_TIPS, LOCALIZED_VI
 
 const GYM_FOODS = [
   // Animal-Based
-  { id: 'g1', name: 'Chicken Breast', protein: 31, calories: 165, fat: 3.6, fiber: 0, keyNutrients: 'B6, Niacin', benefit: 'Muscle, weight control', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&fit=crop&q=80' },
-  { id: 'g2', name: 'Eggs', protein: 13, calories: 155, fat: 11, fiber: 0, keyNutrients: 'B12, Choline', benefit: 'Muscle, brain', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&fit=crop&q=80' },
-  { id: 'g3', name: 'Salmon', protein: 22, calories: 208, fat: 13, fiber: 0, keyNutrients: 'Omega-3, D', benefit: 'Heart, brain', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?w=300&fit=crop&q=80' },
-  { id: 'g4', name: 'Tuna', protein: 25, calories: 132, fat: 1, fiber: 0, keyNutrients: 'B12, Niacin', benefit: 'Fat loss', star: true, category: 'Animal-Based', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=300&fit=crop&q=80' },
+  { id: 'g1', name: 'Chicken Breast', protein: 31, calories: 165, fat: 3.6, fiber: 0, keyNutrients: 'B6, Niacin', benefit: 'Muscle, weight control', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&fit=crop&q=80' },
+  { id: 'g2', name: 'Eggs', protein: 13, calories: 155, fat: 11, fiber: 0, keyNutrients: 'B12, Choline', benefit: 'Muscle, brain', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=300&fit=crop&q=80' },
+  { id: 'g3', name: 'Salmon', protein: 22, calories: 208, fat: 13, fiber: 0, keyNutrients: 'Omega-3, D', benefit: 'Heart, brain', star: true, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=300&fit=crop&q=80' },
+  { id: 'g4', name: 'Tuna', protein: 25, calories: 132, fat: 1, fiber: 0, keyNutrients: 'B12, Niacin', benefit: 'Fat loss', star: true, category: 'Animal-Based', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1501595091296-3aa970afb3ff?w=300&fit=crop&q=80' },
   { id: 'g5', name: 'Turkey Breast', protein: 29, calories: 135, fat: 1, fiber: 0, keyNutrients: 'B6', benefit: 'Lean protein', star: false, category: 'Animal-Based', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1574672280600-4accfa5b6f98?w=300&fit=crop&q=80' },
   { id: 'g6', name: 'Shrimp', protein: 24, calories: 100, fat: 1, fiber: 0, keyNutrients: 'Selenium, Iodine', benefit: 'Low calorie', star: false, category: 'Animal-Based', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=300&fit=crop&q=80' },
   { id: 'g7', name: 'Pork Tenderloin', protein: 27, calories: 143, fat: 3, fiber: 0, keyNutrients: 'B1', benefit: 'Lean meat', star: false, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=300&fit=crop&q=80' },
   { id: 'g8', name: 'Lean Jerky', protein: 30, calories: 300, fat: 3, fiber: 0, keyNutrients: 'Iron', benefit: 'Snack', star: false, category: 'Animal-Based', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1598514983318-2f64f8f4796c?w=300&fit=crop&q=80' },
   // Dairy & Soy
-  { id: 'g9', name: 'Greek Yogurt', protein: 10, calories: 59, fat: 0.4, fiber: 0, keyNutrients: 'Calcium, Probiotics', benefit: 'Gut health', star: true, category: 'Dairy & Soy', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1571212515416-fca988aba4e6?w=300&fit=crop&q=80' },
-  { id: 'g10', name: 'Cottage Cheese', protein: 11, calories: 98, fat: 4, fiber: 0, keyNutrients: 'Calcium', benefit: 'Slow protein', star: false, category: 'Dairy & Soy', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&fit=crop&q=80' },
+  { id: 'g9', name: 'Greek Yogurt', protein: 10, calories: 59, fat: 0.4, fiber: 0, keyNutrients: 'Calcium, Probiotics', benefit: 'Gut health', star: true, category: 'Dairy & Soy', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=300&fit=crop&q=80' },
+  { id: 'g10', name: 'Cottage Cheese', protein: 11, calories: 98, fat: 4, fiber: 0, keyNutrients: 'Calcium', benefit: 'Slow protein', star: false, category: 'Dairy & Soy', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=300&fit=crop&q=80' },
   { id: 'g11', name: 'Tofu', protein: 8, calories: 76, fat: 4, fiber: 1, keyNutrients: 'Calcium', benefit: 'Veg protein', star: true, category: 'Dairy & Soy', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&fit=crop&q=80' },
-  { id: 'g12', name: 'Soybeans (Edamame)', protein: 11, calories: 121, fat: 5, fiber: 5, keyNutrients: 'Iron, Fiber', benefit: 'Snack', star: false, category: 'Dairy & Soy', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1601055903521-9c8d929a99cf?w=300&fit=crop&q=80' },
+  { id: 'g12', name: 'Soybeans (Edamame)', protein: 11, calories: 121, fat: 5, fiber: 5, keyNutrients: 'Iron, Fiber', benefit: 'Snack', star: false, category: 'Dairy & Soy', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=300&fit=crop&q=80' },
   { id: 'g13', name: 'Cheese', protein: 30, calories: 402, fat: 25, fiber: 0, keyNutrients: 'Calcium, B12', benefit: 'Energy', star: false, category: 'Dairy & Soy', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1452195100486-9cc805987862?w=300&fit=crop&q=80' },
   // Plant-Based & Healthy Fats
-  { id: 'g14', name: 'Quinoa', protein: 4.4, calories: 120, fat: 1.9, fiber: 2.8, keyNutrients: 'Magnesium', benefit: 'Energy', star: true, category: 'Plant-Based', tags: ['High Fiber'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'g15', name: 'Lentils/Beans', protein: 9, calories: 116, fat: 0.4, fiber: 8, keyNutrients: 'Iron, Folate', benefit: 'Digestion', star: false, category: 'Plant-Based', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'g14', name: 'Quinoa', protein: 4.4, calories: 120, fat: 1.9, fiber: 2.8, keyNutrients: 'Magnesium', benefit: 'Energy', star: true, category: 'Plant-Based', tags: ['High Fiber'], img: 'https://images.unsplash.com/photo-1586040140378-b5634cb4c8fc?w=300&fit=crop&q=80' },
+  { id: 'g15', name: 'Lentils/Beans', protein: 9, calories: 116, fat: 0.4, fiber: 8, keyNutrients: 'Iron, Folate', benefit: 'Digestion', star: false, category: 'Plant-Based', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=300&fit=crop&q=80' },
   { id: 'g16', name: 'Chickpeas', protein: 19, calories: 364, fat: 6, fiber: 17, keyNutrients: 'Fiber, B9', benefit: 'Energy', star: true, category: 'Plant-Based', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=300&fit=crop&q=80' },
   { id: 'g17', name: 'Almonds', protein: 21, calories: 579, fat: 49, fiber: 12, keyNutrients: 'Vitamin E', benefit: 'Healthy fats', star: true, category: 'Plant-Based', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1574570173583-e0c3e8083f82?w=300&fit=crop&q=80' },
   { id: 'g18', name: 'Walnuts', protein: 15, calories: 654, fat: 65, fiber: 7, keyNutrients: 'Omega-3', benefit: 'Brain', star: false, category: 'Plant-Based', tags: ['High Fiber'], img: 'https://images.unsplash.com/photo-1563412885-6de904a6b8c4?w=300&fit=crop&q=80' },
@@ -39,7 +39,7 @@ const GYM_FOODS = [
 
 const WEIGHT_GAIN_FOODS = [
   // High-Calorie Fats
-  { id: 'wg1', name: 'Ghee', protein: 0, calories: 900, fat: 100, fiber: 0, keyNutrients: 'A, E, K', benefit: 'Add calories easily', star: true, category: 'High-Calorie Fats', tags: [], img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&fit=crop&q=80' },
+  { id: 'wg1', name: 'Ghee', protein: 0, calories: 900, fat: 100, fiber: 0, keyNutrients: 'A, E, K', benefit: 'Add calories easily', star: true, category: 'High-Calorie Fats', tags: [], img: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?w=300&fit=crop&q=80' },
   { id: 'wg2', name: 'Almonds', protein: 21, calories: 579, fat: 49, fiber: 12, keyNutrients: 'Vitamin E', benefit: 'Healthy fats', star: true, category: 'High-Calorie Fats', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1574570173583-e0c3e8083f82?w=300&fit=crop&q=80' },
   { id: 'wg3', name: 'Walnuts', protein: 15, calories: 654, fat: 65, fiber: 7, keyNutrients: 'Omega-3', benefit: 'Brain', star: true, category: 'High-Calorie Fats', tags: ['High Fiber'], img: 'https://images.unsplash.com/photo-1563412885-6de904a6b8c4?w=300&fit=crop&q=80' },
   { id: 'wg4', name: 'Peanuts', protein: 26, calories: 567, fat: 49, fiber: 8, keyNutrients: 'B3', benefit: 'Budget calories', star: true, category: 'High-Calorie Fats', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1567892737950-30c4db37cd89?w=300&fit=crop&q=80' },
@@ -48,44 +48,44 @@ const WEIGHT_GAIN_FOODS = [
   { id: 'wg7', name: 'Dark Chocolate', protein: 7, calories: 598, fat: 42, fiber: 7, keyNutrients: 'Iron', benefit: 'High calorie', star: false, category: 'High-Calorie Fats', tags: ['High Fiber'], img: 'https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=300&fit=crop&q=80' },
   // High-Protein Foods
   { id: 'wg8', name: 'Chicken (Leg/Thigh)', protein: 19, calories: 209, fat: 15, fiber: 0, keyNutrients: 'B vitamins', benefit: 'Muscle growth', star: true, category: 'High-Protein', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c8?w=300&fit=crop&q=80' },
-  { id: 'wg9', name: 'Eggs', protein: 13, calories: 155, fat: 11, fiber: 0, keyNutrients: 'B12, D', benefit: 'Recovery', star: true, category: 'High-Protein', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&fit=crop&q=80' },
+  { id: 'wg9', name: 'Eggs', protein: 13, calories: 155, fat: 11, fiber: 0, keyNutrients: 'B12, D', benefit: 'Recovery', star: true, category: 'High-Protein', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=300&fit=crop&q=80' },
   { id: 'wg10', name: 'Paneer', protein: 19, calories: 265, fat: 20, fiber: 0, keyNutrients: 'Calcium', benefit: 'Weight + muscle', star: true, category: 'High-Protein', tags: ['High Protein', 'Budget'], img: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&fit=crop&q=80' },
-  { id: 'wg11', name: 'Soybean', protein: 36, calories: 446, fat: 20, fiber: 9, keyNutrients: 'Folate', benefit: 'Veg protein', star: true, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1601055903521-9c8d929a99cf?w=300&fit=crop&q=80' },
-  { id: 'wg12', name: 'Moong Dal', protein: 24, calories: 347, fat: 1, fiber: 8, keyNutrients: 'B-complex', benefit: 'Easy protein', star: true, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'wg11', name: 'Soybean', protein: 36, calories: 446, fat: 20, fiber: 9, keyNutrients: 'Folate', benefit: 'Veg protein', star: true, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=300&fit=crop&q=80' },
+  { id: 'wg12', name: 'Moong Dal', protein: 24, calories: 347, fat: 1, fiber: 8, keyNutrients: 'B-complex', benefit: 'Easy protein', star: true, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=300&fit=crop&q=80' },
   { id: 'wg13', name: 'Rajma', protein: 22, calories: 333, fat: 1, fiber: 15, keyNutrients: 'Folate', benefit: 'Fiber + protein', star: false, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1625944230945-1b7dd3b949ab?w=300&fit=crop&q=80' },
-  { id: 'wg14', name: 'Salmon', protein: 20, calories: 208, fat: 13, fiber: 0, keyNutrients: 'D, B12', benefit: 'Omega-3', star: false, category: 'High-Protein', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?w=300&fit=crop&q=80' },
+  { id: 'wg14', name: 'Salmon', protein: 20, calories: 208, fat: 13, fiber: 0, keyNutrients: 'D, B12', benefit: 'Omega-3', star: false, category: 'High-Protein', tags: ['High Protein'], img: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=300&fit=crop&q=80' },
   { id: 'wg15', name: 'Whole Milk', protein: 3.5, calories: 65, fat: 4, fiber: 0, keyNutrients: 'A, B', benefit: 'Balanced nutrition', star: false, category: 'High-Protein', tags: ['Budget'], img: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&fit=crop&q=80' },
-  { id: 'wg16', name: 'Sattu', protein: 20, calories: 387, fat: 7, fiber: 7, keyNutrients: 'B-complex', benefit: 'Energy protein', star: false, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'wg16', name: 'Sattu', protein: 20, calories: 387, fat: 7, fiber: 7, keyNutrients: 'B-complex', benefit: 'Energy protein', star: false, category: 'High-Protein', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=300&fit=crop&q=80' },
   // Carbs & Energy
   { id: 'wg17', name: 'White Rice', protein: 6.5, calories: 345, fat: 0.5, fiber: 0, keyNutrients: 'B vitamins', benefit: 'Main energy', star: true, category: 'Carbs & Energy', tags: ['Budget'], img: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=300&fit=crop&q=80' },
   { id: 'wg18', name: 'Oats', protein: 17, calories: 389, fat: 7, fiber: 10, keyNutrients: 'B1', benefit: 'Sustained energy', star: true, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1614961233913-a5113a4a34a2?w=300&fit=crop&q=80' },
   { id: 'wg19', name: 'Banana', protein: 1.1, calories: 89, fat: 0.3, fiber: 2.6, keyNutrients: 'B6, C', benefit: 'Post-workout', star: true, category: 'Carbs & Energy', tags: ['Budget'], img: 'https://images.unsplash.com/photo-1481349518771-20055b2a7b24?w=300&fit=crop&q=80' },
   { id: 'wg20', name: 'Sweet Potato', protein: 1.6, calories: 86, fat: 0.1, fiber: 3, keyNutrients: 'Vitamin A', benefit: 'Slow energy', star: true, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1596097635121-14b38c5d7a1f?w=300&fit=crop&q=80' },
   { id: 'wg21', name: 'Potatoes', protein: 2, calories: 77, fat: 0.1, fiber: 2, keyNutrients: 'C, B6', benefit: 'Glycogen', star: false, category: 'Carbs & Energy', tags: ['Budget'], img: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=300&fit=crop&q=80' },
-  { id: 'wg22', name: 'Ragi', protein: 7, calories: 328, fat: 1.3, fiber: 3, keyNutrients: 'Calcium', benefit: 'Strength', star: false, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'wg23', name: 'Bajra', protein: 11, calories: 361, fat: 5, fiber: 9, keyNutrients: 'Iron', benefit: 'Energy', star: false, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'wg22', name: 'Ragi', protein: 7, calories: 328, fat: 1.3, fiber: 3, keyNutrients: 'Calcium', benefit: 'Strength', star: false, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&fit=crop&q=80' },
+  { id: 'wg23', name: 'Bajra', protein: 11, calories: 361, fat: 5, fiber: 9, keyNutrients: 'Iron', benefit: 'Energy', star: false, category: 'Carbs & Energy', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&fit=crop&q=80' },
   // Natural Sugar & Quick Energy
-  { id: 'wg24', name: 'Dates', protein: 2.5, calories: 282, fat: 0.4, fiber: 7, keyNutrients: 'B-complex', benefit: 'Instant energy', star: true, category: 'Natural Sugar', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1566542030429-b8e4e4e9d40a?w=300&fit=crop&q=80' },
-  { id: 'wg25', name: 'Raisins', protein: 3, calories: 299, fat: 0.5, fiber: 4, keyNutrients: 'B6', benefit: 'Energy boost', star: true, category: 'Natural Sugar', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1609501676469-5d5af08e1b72?w=300&fit=crop&q=80' },
+  { id: 'wg24', name: 'Dates', protein: 2.5, calories: 282, fat: 0.4, fiber: 7, keyNutrients: 'B-complex', benefit: 'Instant energy', star: true, category: 'Natural Sugar', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1558818498-28c1e002b655?w=300&fit=crop&q=80' },
+  { id: 'wg25', name: 'Raisins', protein: 3, calories: 299, fat: 0.5, fiber: 4, keyNutrients: 'B6', benefit: 'Energy boost', star: true, category: 'Natural Sugar', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1595231776515-ddffb1f4eb73?w=300&fit=crop&q=80' },
 ];
 
 const WEIGHT_LOSS_FOODS = [
   // Whole Grains
   { id: 'wl1', name: 'Oats', protein: 14, calories: 380, fat: 7, fiber: 10, keyNutrients: 'Beta-glucan, heart health', benefit: 'Heart health, sustained energy', star: true, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1614961233913-a5113a4a34a2?w=300&fit=crop&q=80' },
-  { id: 'wl2', name: 'Dalia (Broken Wheat)', protein: 12, calories: 340, fat: 2, fiber: 11, keyNutrients: 'Digestion, light food', benefit: 'Easy digestion', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'wl3', name: 'Quinoa', protein: 15, calories: 370, fat: 6, fiber: 7, keyNutrients: 'Complete protein, magnesium', benefit: 'Complete protein source', star: true, category: 'Whole Grains', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'wl4', name: 'Ragi (Finger Millet)', protein: 7.5, calories: 330, fat: 1.5, fiber: 11, keyNutrients: 'Calcium, iron, digestion', benefit: 'Calcium & digestion', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'wl5', name: 'Bajra (Pearl Millet)', protein: 11, calories: 360, fat: 5, fiber: 9, keyNutrients: 'Iron, satiety', benefit: 'Iron & satiety', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
-  { id: 'wl6', name: 'Jowar (Sorghum)', protein: 10, calories: 330, fat: 3, fiber: 9, keyNutrients: 'Gluten-free, weight loss', benefit: 'Gluten-free grain', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'wl2', name: 'Dalia (Broken Wheat)', protein: 12, calories: 340, fat: 2, fiber: 11, keyNutrients: 'Digestion, light food', benefit: 'Easy digestion', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&fit=crop&q=80' },
+  { id: 'wl3', name: 'Quinoa', protein: 15, calories: 370, fat: 6, fiber: 7, keyNutrients: 'Complete protein, magnesium', benefit: 'Complete protein source', star: true, category: 'Whole Grains', tags: ['High Protein', 'High Fiber'], img: 'https://images.unsplash.com/photo-1586040140378-b5634cb4c8fc?w=300&fit=crop&q=80' },
+  { id: 'wl4', name: 'Ragi (Finger Millet)', protein: 7.5, calories: 330, fat: 1.5, fiber: 11, keyNutrients: 'Calcium, iron, digestion', benefit: 'Calcium & digestion', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=300&fit=crop&q=80' },
+  { id: 'wl5', name: 'Bajra (Pearl Millet)', protein: 11, calories: 360, fat: 5, fiber: 9, keyNutrients: 'Iron, satiety', benefit: 'Iron & satiety', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&fit=crop&q=80' },
+  { id: 'wl6', name: 'Jowar (Sorghum)', protein: 10, calories: 330, fat: 3, fiber: 9, keyNutrients: 'Gluten-free, weight loss', benefit: 'Gluten-free grain', star: false, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=300&fit=crop&q=80' },
   { id: 'wl7', name: 'Brown Rice', protein: 7.5, calories: 360, fat: 2, fiber: 3.5, keyNutrients: 'Energy, complex carbs', benefit: 'Complex carbs', star: true, category: 'Whole Grains', tags: ['High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=300&fit=crop&q=80' },
   // Metabolism-Boosting Proteins
-  { id: 'wl8', name: 'Eggs (1 whole)', protein: 6.5, calories: 75, fat: 5, fiber: 0, keyNutrients: 'Choline, high-quality protein', benefit: 'High-quality protein', star: true, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=300&fit=crop&q=80' },
-  { id: 'wl9', name: 'Lentils (Dal)', protein: 8.5, calories: 110, fat: 0.5, fiber: 8, keyNutrients: 'Iron, folate, fiber', benefit: 'Iron & fiber', star: true, category: 'Lean Proteins', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&fit=crop&q=80' },
+  { id: 'wl8', name: 'Eggs (1 whole)', protein: 6.5, calories: 75, fat: 5, fiber: 0, keyNutrients: 'Choline, high-quality protein', benefit: 'High-quality protein', star: true, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=300&fit=crop&q=80' },
+  { id: 'wl9', name: 'Lentils (Dal)', protein: 8.5, calories: 110, fat: 0.5, fiber: 8, keyNutrients: 'Iron, folate, fiber', benefit: 'Iron & fiber', star: true, category: 'Lean Proteins', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=300&fit=crop&q=80' },
   { id: 'wl10', name: 'Sprouts', protein: 3.5, calories: 30, fat: 0.5, fiber: 4, keyNutrients: 'Vitamin C, metabolism', benefit: 'Boosts metabolism', star: true, category: 'Lean Proteins', tags: ['High Fiber', 'Low Calorie', 'Budget'], img: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&fit=crop&q=80' },
   { id: 'wl11', name: 'Chickpeas (Chana)', protein: 19, calories: 360, fat: 6, fiber: 16, keyNutrients: 'Fiber, fullness', benefit: 'Keeps you full', star: true, category: 'Lean Proteins', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1607532941433-304659e8198a?w=300&fit=crop&q=80' },
-  { id: 'wl12', name: 'Soya Chunks', protein: 52, calories: 345, fat: 0.5, fiber: 13, keyNutrients: 'High protein, low fat', benefit: 'Very high protein', star: true, category: 'Lean Proteins', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1601055903521-9c8d929a99cf?w=300&fit=crop&q=80' },
-  { id: 'wl13', name: 'Chicken Breast', protein: 31, calories: 165, fat: 3.6, fiber: 0, keyNutrients: 'Lean muscle protein', benefit: 'Lean muscle', star: true, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&fit=crop&q=80' },
-  { id: 'wl14', name: 'Fish (White)', protein: 19, calories: 100, fat: 2, fiber: 0, keyNutrients: 'Omega-3, low fat', benefit: 'Omega-3 & lean protein', star: false, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=300&fit=crop&q=80' },
+  { id: 'wl12', name: 'Soya Chunks', protein: 52, calories: 345, fat: 0.5, fiber: 13, keyNutrients: 'High protein, low fat', benefit: 'Very high protein', star: true, category: 'Lean Proteins', tags: ['High Protein', 'High Fiber', 'Budget'], img: 'https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=300&fit=crop&q=80' },
+  { id: 'wl13', name: 'Chicken Breast', protein: 31, calories: 165, fat: 3.6, fiber: 0, keyNutrients: 'Lean muscle protein', benefit: 'Lean muscle', star: true, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?w=300&fit=crop&q=80' },
+  { id: 'wl14', name: 'Fish (White)', protein: 19, calories: 100, fat: 2, fiber: 0, keyNutrients: 'Omega-3, low fat', benefit: 'Omega-3 & lean protein', star: false, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1534939561126-855b8675edd7?w=300&fit=crop&q=80' },
   { id: 'wl15', name: 'Tofu / Paneer (Low-fat)', protein: 16, calories: 125, fat: 5, fiber: 0, keyNutrients: 'Calcium, protein', benefit: 'Calcium & protein', star: false, category: 'Lean Proteins', tags: ['High Protein', 'Low Calorie'], img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&fit=crop&q=80' },
   // Fruits & Vegetables
   { id: 'wl16', name: 'Spinach', protein: 2.5, calories: 23, fat: 0.4, fiber: 2, keyNutrients: 'Iron, Vitamin K', benefit: 'Iron & low calorie', star: true, category: 'Fruits & Vegetables', tags: ['High Fiber', 'Low Calorie', 'Budget'], img: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=300&fit=crop&q=80' },
@@ -167,7 +167,7 @@ const VITAMIN_DATA = [
 
 // ── COMPONENT ────────────────────────────────────────────────────────────────────
 
-export default function DietPlan() {
+export default function DietPlan({ user }) {
   const { lang } = useLanguage();
   const dt = (key) => DIET_T[lang]?.[key] || DIET_T['en']?.[key] || key;
   const ft = (text) => FOOD_T[lang]?.[text] || FOOD_T['en']?.[text] || text;
@@ -176,9 +176,9 @@ export default function DietPlan() {
   const [activeSubTab, setActiveSubTab] = useState('foods');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilters, setActiveFilters] = useState([]);
-  const [savedItems, setSavedItems] = useState(() => JSON.parse(localStorage.getItem('mv_saved_items') || '[]'));
-  const [savedCalories, setSavedCalories] = useState(() => parseInt(localStorage.getItem('mv_saved_calories') || '0', 10));
-  const [savedProtein, setSavedProtein] = useState(() => parseInt(localStorage.getItem('mv_saved_protein') || '0', 10));
+  const [savedItems, setSavedItems] = useState(() => JSON.parse(localStorage.getItem(user?.id ? `mv_saved_items_${user.id}` : 'mv_saved_items') || '[]'));
+  const [savedCalories, setSavedCalories] = useState(() => parseInt(localStorage.getItem(user?.id ? `mv_saved_calories_${user.id}` : 'mv_saved_calories') || '0', 10));
+  const [savedProtein, setSavedProtein] = useState(() => parseInt(localStorage.getItem(user?.id ? `mv_saved_protein_${user.id}` : 'mv_saved_protein') || '0', 10));
   const [userWeight, setUserWeight] = useState('');
   const [userGoal, setUserGoal] = useState('gym');
   const [dietType, setDietType] = useState('both');
@@ -206,15 +206,34 @@ export default function DietPlan() {
   const [gainTips, setGainTips] = useState(() => LOCALIZED_DIET_TIPS['en'].gain);
   const [lossTips, setLossTips] = useState(() => LOCALIZED_DIET_TIPS['en'].loss);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount and ensure up-to-date image URLs
   useEffect(() => {
-    const savedGymFoods = localStorage.getItem('mv_gym_foods');
-    const savedGainFoods = localStorage.getItem('mv_gain_foods');
-    const savedLossFoods = localStorage.getItem('mv_loss_foods');
+    const mergeImages = (saved, defaults) => {
+      if (!saved) return defaults;
+      try {
+        const parsed = JSON.parse(saved);
+        return defaults.map(def => {
+          const custom = parsed.find(item => item.id === def.id || item.name === def.name);
+          if (!custom) return def;
+          // If custom item has broken or default placeholder URL, replace with updated def.img
+          const isBroken = !custom.img || 
+            custom.img.includes('1586201375761-83865001e31c') || 
+            custom.img.includes('1612198188060-c7c2a3b66eae') || 
+            custom.img.includes('1601055903521-9c8d929a99cf') || 
+            custom.img.includes('1609501676469-5d5af08e1b72');
+          return {
+            ...custom,
+            img: isBroken ? def.img : custom.img
+          };
+        });
+      } catch {
+        return defaults;
+      }
+    };
 
-    if (savedGymFoods) setGymFoods(JSON.parse(savedGymFoods));
-    if (savedGainFoods) setGainFoods(JSON.parse(savedGainFoods));
-    if (savedLossFoods) setLossFoods(JSON.parse(savedLossFoods));
+    setGymFoods(mergeImages(localStorage.getItem('mv_gym_foods'), GYM_FOODS));
+    setGainFoods(mergeImages(localStorage.getItem('mv_gain_foods'), WEIGHT_GAIN_FOODS));
+    setLossFoods(mergeImages(localStorage.getItem('mv_loss_foods'), WEIGHT_LOSS_FOODS));
   }, []);
 
   // Update dynamic plans and tips based on active language
@@ -251,9 +270,18 @@ export default function DietPlan() {
   useEffect(() => { localStorage.setItem(`mv_gain_tips_${lang}`, JSON.stringify(gainTips)); }, [gainTips, lang]);
   useEffect(() => { localStorage.setItem(`mv_loss_tips_${lang}`, JSON.stringify(lossTips)); }, [lossTips, lang]);
 
-  useEffect(() => { localStorage.setItem('mv_saved_items', JSON.stringify(savedItems)); }, [savedItems]);
-  useEffect(() => { localStorage.setItem('mv_saved_calories', savedCalories.toString()); }, [savedCalories]);
-  useEffect(() => { localStorage.setItem('mv_saved_protein', savedProtein.toString()); }, [savedProtein]);
+  // Sync state when user changes
+  useEffect(() => {
+    if (user?.id) {
+      setSavedItems(JSON.parse(localStorage.getItem(`mv_saved_items_${user.id}`) || '[]'));
+      setSavedCalories(parseInt(localStorage.getItem(`mv_saved_calories_${user.id}`) || '0', 10));
+      setSavedProtein(parseInt(localStorage.getItem(`mv_saved_protein_${user.id}`) || '0', 10));
+    }
+  }, [user]);
+
+  useEffect(() => { localStorage.setItem(user?.id ? `mv_saved_items_${user.id}` : 'mv_saved_items', JSON.stringify(savedItems)); }, [savedItems, user]);
+  useEffect(() => { localStorage.setItem(user?.id ? `mv_saved_calories_${user.id}` : 'mv_saved_calories', savedCalories.toString()); }, [savedCalories, user]);
+  useEffect(() => { localStorage.setItem(user?.id ? `mv_saved_protein_${user.id}` : 'mv_saved_protein', savedProtein.toString()); }, [savedProtein, user]);
 
   const sections = [
     { id: 'gym', label: dt('gymDiet'), color: '#f43f5e' }, // Rose/Crimson

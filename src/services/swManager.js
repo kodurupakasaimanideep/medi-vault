@@ -18,6 +18,15 @@ const _soundCallbacks = {
   playWaterSound:   null,   // (reminder) => void
 };
 
+const getActiveUserId = () => {
+  try {
+    const session = JSON.parse(localStorage.getItem('mv_auth_session'));
+    return session?.uid || '';
+  } catch {
+    return '';
+  }
+};
+
 /**
  * Register sound callbacks so SW messages can trigger in-page sound.
  * Called by AlarmManager and DrinkingWater on mount.
@@ -189,12 +198,14 @@ function handleSwMessage(event) {
     // Update localStorage
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      const store    = JSON.parse(localStorage.getItem('medivault_water') || '{}');
+      const userId   = getActiveUserId();
+      const storeKey = userId ? `medivault_water_${userId}` : 'medivault_water';
+      const store    = JSON.parse(localStorage.getItem(storeKey) || '{}');
       if (store.reminders) {
         store.reminders = store.reminders.map((r) =>
           r.id === reminder.id ? { ...r, lastTriggered: todayStr } : r
         );
-        localStorage.setItem('medivault_water', JSON.stringify(store));
+        localStorage.setItem(storeKey, JSON.stringify(store));
       }
     } catch (_) {}
   }
@@ -208,7 +219,9 @@ function handleSwMessage(event) {
   // SW says: quick-log 250ml water from notification action button
   if (type === 'QUICK_LOG_WATER') {
     try {
-      const store    = JSON.parse(localStorage.getItem('medivault_water') || '{}');
+      const userId   = getActiveUserId();
+      const storeKey = userId ? `medivault_water_${userId}` : 'medivault_water';
+      const store    = JSON.parse(localStorage.getItem(storeKey) || '{}');
       const todayKey = new Date().toLocaleDateString('en-CA');
       const now      = new Date();
       const timeStr  = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -220,7 +233,7 @@ function handleSwMessage(event) {
       if (!store[todayKey]) store[todayKey] = { logs: [], total: 0 };
       store[todayKey].logs.push(entry);
       store[todayKey].total = (store[todayKey].total || 0) + (amount || 250);
-      localStorage.setItem('medivault_water', JSON.stringify(store));
+      localStorage.setItem(storeKey, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('medivault_water_logged', { detail: entry }));
     } catch (_) {}
   }

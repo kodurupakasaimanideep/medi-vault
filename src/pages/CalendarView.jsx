@@ -8,7 +8,7 @@ function readLS(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
 
-function buildActivityMap() {
+function buildActivityMap(user) {
   const map = {}; // { 'YYYY-MM-DD': { water, yoga, diet } }
 
   // WATER
@@ -30,7 +30,7 @@ function buildActivityMap() {
   }
 
   // YOGA — Level 1 completion = yoga done that day
-  const yogaLastDate = localStorage.getItem('yoga_last_streak_date');
+  const yogaLastDate = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date');
   if (yogaLastDate) {
     const d = new Date(yogaLastDate);
     const key = d.toLocaleDateString('en-CA');
@@ -38,7 +38,7 @@ function buildActivityMap() {
     map[key].yoga = true;
   }
   // Also check yoga_activity_log if it exists
-  const yogaLog = readLS('yoga_activity_log', {});
+  const yogaLog = readLS(user?.id ? `yoga_activity_log_${user.id}` : 'yoga_activity_log', {});
   Object.entries(yogaLog).forEach(([k, v]) => {
     if (!map[k]) map[k] = {};
     map[k].yoga = !!v;
@@ -67,7 +67,7 @@ function getDayScore(entry) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function CalendarView() {
+export default function CalendarView({ user }) {
   const { lang } = useLanguage();
 
   const localMonths = {
@@ -356,10 +356,10 @@ export default function CalendarView() {
   const month = currentDate.getMonth();
 
   useEffect(() => {
-    const { map, waterTarget: wt } = buildActivityMap();
+    const { map, waterTarget: wt } = buildActivityMap(user);
     setActivityMap(map);
     setWaterTarget(wt);
-  }, []);
+  }, [user]);
 
   const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
   const firstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
@@ -419,7 +419,7 @@ export default function CalendarView() {
   const currentStreak = computeCurrentStreak();
   const monthStats = computeMonthlyStats();
   const totalScore = computeTotalScore();
-  const yogaStreakLS = parseInt(localStorage.getItem('yoga_day_streaks') || '0', 10);
+  const yogaStreakLS = parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
 
   const getDayStatus = (d) => {
     const key = dateKey(year, month, d);

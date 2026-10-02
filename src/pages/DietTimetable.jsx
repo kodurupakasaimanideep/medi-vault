@@ -210,7 +210,8 @@ export default function DietTimetable({ user }) {
   const mt = (key) => localT[lang]?.[key] || localT['en']?.[key];
 
   const [schedule, setSchedule] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const key = user?.id ? `${STORAGE_KEY}_${user.id}` : STORAGE_KEY;
+    const saved = localStorage.getItem(key);
     if (saved) return JSON.parse(saved);
     return [
       { id: '1', patientName: user?.username || 'Patient', time: '08:00', item: 'Oats & Berries', mealType: 'Breakfast' },
@@ -228,9 +229,27 @@ export default function DietTimetable({ user }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
 
+  // Sync schedule when user changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(schedule));
-  }, [schedule]);
+    if (user?.id) {
+      const key = `${STORAGE_KEY}_${user.id}`;
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        setSchedule(JSON.parse(saved));
+      } else {
+        setSchedule([
+          { id: '1', patientName: user?.username || 'Patient', time: '08:00', item: 'Oats & Berries', mealType: 'Breakfast' },
+          { id: '2', patientName: user?.username || 'Patient', time: '13:00', item: 'Grilled Chicken Salad', mealType: 'Lunch' },
+          { id: '3', patientName: user?.username || 'Patient', time: '20:00', item: 'Salmon & Veggies', mealType: 'Dinner' }
+        ]);
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const key = user?.id ? `${STORAGE_KEY}_${user.id}` : STORAGE_KEY;
+    localStorage.setItem(key, JSON.stringify(schedule));
+  }, [schedule, user]);
 
   const handleSave = (e) => {
     e.preventDefault();

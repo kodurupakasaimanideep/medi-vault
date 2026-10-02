@@ -15,7 +15,7 @@ export default function Dashboard({ user }) {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [patientData, setPatientData] = useState(null);
-  const [yogaStreaks, setYogaStreaks] = useState(4);
+  const [yogaStreaks, setYogaStreaks] = useState(0);
   const [lifestyleStats, setLifestyleStats] = useState({
     water: { pct: 0, text: '0L / 2.5L' },
     diet: { pct: 0, text: '0 / 2000 kcal' },
@@ -487,8 +487,8 @@ export default function Dashboard({ user }) {
   };
 
   useEffect(() => {
-    setYogaStreaks(parseInt(localStorage.getItem('yoga_streaks') || '4', 10));
-  }, []);
+    setYogaStreaks(parseInt(localStorage.getItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks') || '0', 10));
+  }, [user]);
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -524,7 +524,7 @@ export default function Dashboard({ user }) {
       let waterPct = 0;
       let waterText = '0L / 2.5L';
       try {
-        const wStore = JSON.parse(localStorage.getItem('medivault_water') || '{}');
+        const wStore = JSON.parse(localStorage.getItem(user?.id ? `medivault_water_${user.id}` : 'medivault_water') || '{}');
         const today = new Date().toLocaleDateString('en-CA');
         const totalDrank = wStore[today]?.total || 0;
         const target = wStore.target || 2500;
@@ -536,7 +536,7 @@ export default function Dashboard({ user }) {
       let dietPct = 0;
       let dietText = `0 / 2000 ${lang === 'eu' ? 'kcal' : lang === 'hi' ? 'कैलोरी' : lang === 'te' ? 'కిలోక్యాలరీలు' : 'kcal'}`;
       try {
-         const savedCals = parseInt(localStorage.getItem('mv_saved_calories') || '0', 10);
+         const savedCals = parseInt(localStorage.getItem(user?.id ? `mv_saved_calories_${user.id}` : 'mv_saved_calories') || '0', 10);
          const targetCals = 2000;
          dietPct = Math.min(100, Math.round((savedCals / targetCals) * 100));
          dietText = `${savedCals} / ${targetCals} ${lang === 'eu' ? 'kcal' : lang === 'hi' ? 'कैलोरी' : lang === 'te' ? 'కిలోక్యాలరీలు' : 'kcal'}`;
@@ -548,10 +548,10 @@ export default function Dashboard({ user }) {
       try {
          // Check and reset Level 1 and Level 2 if daily reset date is different
          const today = new Date().toLocaleDateString('en-CA');
-         const lastReset = localStorage.getItem('yoga_last_reset_date');
-         let completedVideos = JSON.parse(localStorage.getItem('yoga_completed_videos') || '{}');
+         const lastReset = localStorage.getItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date');
+         let completedVideos = JSON.parse(localStorage.getItem(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos') || '{}');
          if (!lastReset) {
-           localStorage.setItem('yoga_last_reset_date', today);
+           localStorage.setItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date', today);
          } else if (lastReset !== today) {
            let changed = false;
            Object.keys(completedVideos).forEach(key => {
@@ -561,11 +561,11 @@ export default function Dashboard({ user }) {
              }
            });
            if (changed) {
-             localStorage.setItem('yoga_completed_videos', JSON.stringify(completedVideos));
+             localStorage.setItem(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos', JSON.stringify(completedVideos));
            }
-           localStorage.setItem('yoga_last_reset_date', today);
-           localStorage.removeItem('yoga_l1_completion_time');
-           localStorage.removeItem('yoga_l2_completion_time');
+           localStorage.setItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date', today);
+           localStorage.removeItem(user?.id ? `yoga_l1_completion_time_${user.id}` : 'yoga_l1_completion_time');
+           localStorage.removeItem(user?.id ? `yoga_l2_completion_time_${user.id}` : 'yoga_l2_completion_time');
          }
          const completedCount = Object.keys(completedVideos).length;
          const targetSessions = 10;
@@ -602,15 +602,19 @@ export default function Dashboard({ user }) {
       });
 
       // Live update yoga streaks
-      const latestStreak = parseInt(localStorage.getItem('yoga_streaks') || localStorage.getItem('yoga_day_streaks') || '0', 10);
+      const latestStreak = parseInt(localStorage.getItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks') || localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
       setYogaStreaks(latestStreak);
     };
     
     fetchStats();
     window.addEventListener('medivault_sleep_logged', fetchStats);
-    const interval = setInterval(fetchStats, 5000); // Check every 5s for cross-tab updates
+    window.addEventListener('medivault_water_logged', fetchStats);
+    window.addEventListener('medivault_water_updated', fetchStats);
+    const interval = setInterval(fetchStats, 2000); // Check every 2s for cross-tab updates
     return () => {
       window.removeEventListener('medivault_sleep_logged', fetchStats);
+      window.removeEventListener('medivault_water_logged', fetchStats);
+      window.removeEventListener('medivault_water_updated', fetchStats);
       clearInterval(interval);
     };
   }, [lang, user?.id]);
@@ -623,7 +627,6 @@ export default function Dashboard({ user }) {
     { label: ct('drinkingWater'), path: '/drinking-water', icon: Droplets, color: '#06b6d4' },
     { label: ct('yoga'), path: '/yoga', icon: Brain, color: '#ec4899' },
     { label: ct('dietTimetable'), path: '/diet-timetable', icon: Clock, color: '#14b8a6' },
-    { label: ct('diseasesExercise'), path: '/medical-diseases', icon: Dumbbell, color: '#10b981' },
     { label: ct('calendarView'), path: '/calendar-view', icon: Calendar, color: '#6366f1' },
   ];
 
@@ -681,6 +684,46 @@ export default function Dashboard({ user }) {
 
   const localQuotes = ct('quotes');
   const dailyQuote = localQuotes[new Date().getDay() % localQuotes.length];
+
+  const getWeeklyPerformanceData = () => {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0: Sun, 1: Mon, ... 6: Sat
+    const distanceToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday);
+
+    const labels = [
+      { en: 'Mon', te: 'సోమ', hi: 'సోమ', eu: 'Lun', col: '#0ea5e9' },
+      { en: 'Tue', te: 'మంగళ', hi: 'मंगल', eu: 'Mar', col: '#10b981' },
+      { en: 'Wed', te: 'బుధ', hi: 'బుధ', eu: 'Mié', col: '#f59e0b' },
+      { en: 'Thu', te: 'గురు', hi: 'गुरु', eu: 'Jue', col: '#8b5cf6' },
+      { en: 'Fri', te: 'శుక్ర', hi: 'శుక్ర', eu: 'Vie', col: '#ec4899' },
+      { en: 'Sat', te: 'శని', hi: 'శని', eu: 'Sáb', col: '#ef4444' },
+      { en: 'Sun', te: 'ఆది', hi: 'రవి', eu: 'Dom', col: '#06b6d4' }
+    ];
+
+    const waterKey = user?.id ? `medivault_water_${user.id}` : 'medivault_water';
+    const waterStore = JSON.parse(localStorage.getItem(waterKey) || '{}');
+    const defaultTarget = waterStore.target || 2500;
+
+    return labels.map((labelInfo, i) => {
+      const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const dateKey = `${year}-${month}-${day}`;
+
+      const entry = waterStore[dateKey] || waterStore.history?.[dateKey] || {};
+      const waterDrank = entry.total || 0;
+      const target = entry.target || defaultTarget;
+      const val = target > 0 ? Math.min(100, Math.round((waterDrank / target) * 100)) : 0;
+
+      return {
+        day: lang === 'te' ? labelInfo.te : lang === 'hi' ? labelInfo.hi : lang === 'eu' ? labelInfo.eu : labelInfo.en,
+        val,
+        col: labelInfo.col
+      };
+    });
+  };
 
   return (
     <div className="dash-main">
@@ -873,7 +916,7 @@ export default function Dashboard({ user }) {
             <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <Flame size={28} style={{ color: '#f97316', filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.5))' }} />
-                <div style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--text-main)', lineHeight: '1' }}>{yogaStreaks + 8}</div>
+                <div style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--text-main)', lineHeight: '1' }}>{yogaStreaks}</div>
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', fontWeight: 'bold' }}>{ct('daysStreak')} 🔥</div>
               {/* Streak dots */}
@@ -881,23 +924,15 @@ export default function Dashboard({ user }) {
                 {Array.from({ length: 7 }, (_, i) => (
                   <div key={i} style={{
                     width: '10px', height: '10px', borderRadius: '50%',
-                    background: i < Math.min(yogaStreaks + 8, 7) ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--border)',
-                    boxShadow: i < Math.min(yogaStreaks + 8, 7) ? '0 0 6px rgba(249,115,22,0.6)' : 'none'
+                    background: i < Math.min(yogaStreaks, 7) ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--border)',
+                    boxShadow: i < Math.min(yogaStreaks, 7) ? '0 0 6px rgba(249,115,22,0.6)' : 'none'
                   }} />
                 ))}
               </div>
             </div>
 
             <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '6px' }}>
-              {[
-                { day: lang === 'te' ? 'సోమ' : lang === 'hi' ? 'सोम' : lang === 'eu' ? 'Lun' : 'Mon', val: Math.min(100, (lifestyleStats.water.pct + 10) % 100 || 65), col: '#0ea5e9' },
-                { day: lang === 'te' ? 'మంగళ' : lang === 'hi' ? 'मंगल' : lang === 'eu' ? 'Mar' : 'Tue', val: Math.min(100, (lifestyleStats.diet.pct + 15) % 100 || 82), col: '#10b981' },
-                { day: lang === 'te' ? 'బుధ' : lang === 'hi' ? 'बुध' : lang === 'eu' ? 'Mié' : 'Wed', val: Math.min(100, (lifestyleStats.exercise.pct + 5) % 100 || 45), col: '#f59e0b' },
-                { day: lang === 'te' ? 'గురు' : lang === 'hi' ? 'गुरु' : lang === 'eu' ? 'Jue' : 'Thu', val: Math.min(100, (lifestyleStats.water.pct + 25) % 100 || 90), col: '#8b5cf6' },
-                { day: lang === 'te' ? 'శుక్ర' : lang === 'hi' ? 'शुक्र' : lang === 'eu' ? 'Vie' : 'Fri', val: Math.min(100, (lifestyleStats.diet.pct + 8) % 100 || 78), col: '#ec4899' },
-                { day: lang === 'te' ? 'శని' : lang === 'hi' ? 'शनि' : lang === 'eu' ? 'Sáb' : 'Sat', val: Math.min(100, (lifestyleStats.exercise.pct + 30) % 100 || 95), col: '#ef4444' },
-                { day: lang === 'te' ? 'ఆది' : lang === 'hi' ? 'रवि' : lang === 'eu' ? 'Dom' : 'Sun', val: Math.min(100, (lifestyleStats.water.pct) % 100 || 60), col: '#06b6d4' }
-              ].map((item, i) => (
+              {getWeeklyPerformanceData().map((item, i) => (
                 <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
                   <span style={{ fontSize: '0.6rem', color: item.col, fontWeight: '800' }}>{item.val}%</span>
                   <div style={{ width: '100%', height: '80px', background: 'var(--bg-color)', borderRadius: '6px', display: 'flex', alignItems: 'flex-end', overflow: 'hidden', position: 'relative' }}>

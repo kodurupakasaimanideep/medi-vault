@@ -28,8 +28,8 @@ function readLS(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
 }
 
-function getPatientData() {
-  const water     = readLS('medivault_water', {});
+function getPatientData(user) {
+  const water     = readLS(user?.id ? `medivault_water_${user.id}` : 'medivault_water', {});
   const todayKey  = new Date().toLocaleDateString('en-CA');
   const waterToday = water[todayKey]?.total || 0;
   const waterTarget = water.target || 2500;
@@ -44,10 +44,10 @@ function getPatientData() {
 
   // Check and reset Level 1 and Level 2 if daily reset date is different
   const today = new Date().toLocaleDateString('en-CA');
-  const lastReset = localStorage.getItem('yoga_last_reset_date');
-  let completedVideos = readLS('yoga_completed_videos', {});
+  const lastReset = localStorage.getItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date');
+  let completedVideos = readLS(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos', {});
   if (!lastReset) {
-    localStorage.setItem('yoga_last_reset_date', today);
+    localStorage.setItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date', today);
   } else if (lastReset !== today) {
     let changed = false;
     Object.keys(completedVideos).forEach(key => {
@@ -57,28 +57,28 @@ function getPatientData() {
       }
     });
     if (changed) {
-      localStorage.setItem('yoga_completed_videos', JSON.stringify(completedVideos));
+      localStorage.setItem(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos', JSON.stringify(completedVideos));
     }
-    localStorage.setItem('yoga_last_reset_date', today);
-    localStorage.removeItem('yoga_l1_completion_time');
-    localStorage.removeItem('yoga_l2_completion_time');
+    localStorage.setItem(user?.id ? `yoga_last_reset_date_${user.id}` : 'yoga_last_reset_date', today);
+    localStorage.removeItem(user?.id ? `yoga_l1_completion_time_${user.id}` : 'yoga_l1_completion_time');
+    localStorage.removeItem(user?.id ? `yoga_l2_completion_time_${user.id}` : 'yoga_l2_completion_time');
   }
 
-  const yogaStreak      = parseInt(localStorage.getItem('yoga_day_streaks') || '0', 10);
-  const yogaDate        = localStorage.getItem('yoga_last_streak_date') || '—';
+  const yogaStreak      = parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
+  const yogaDate        = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date') || '—';
   const level1Done = ['l1v1','l1v2','l1v3','l1v4'].filter(id => completedVideos[id]).length;
   const level2Done = ['l2v1','l2v2','l2v3','l2v4'].filter(id => completedVideos[id]).length;
 
-  const dietSchedule  = readLS('medivault_diet_timetable', []);
-  const savedCalories = parseFloat(localStorage.getItem('mv_saved_calories') || '0');
-  const savedProtein  = parseFloat(localStorage.getItem('mv_saved_protein')  || '0');
-  const savedItems    = readLS('mv_saved_items', []);
+  const dietSchedule  = readLS(user?.id ? `medivault_diet_timetable_${user.id}` : 'medivault_diet_timetable', []);
+  const savedCalories = parseFloat(localStorage.getItem(user?.id ? `mv_saved_calories_${user.id}` : 'mv_saved_calories') || '0');
+  const savedProtein  = parseFloat(localStorage.getItem(user?.id ? `mv_saved_protein_${user.id}` : 'mv_saved_protein')  || '0');
+  const savedItems    = readLS(user?.id ? `mv_saved_items_${user.id}` : 'mv_saved_items', []);
 
   return { waterToday, waterTarget, waterStreak, yogaStreak, yogaDate, level1Done, level2Done, dietSchedule, savedCalories, savedProtein, savedItems };
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function Consultation() {
+export default function Consultation({ user }) {
   const navigate = useNavigate();
   const [loginMode, setLoginMode] = useState('doctor'); // 'doctor' | 'user'
   const [loggedIn, setLoggedIn]   = useState(false);
@@ -91,7 +91,7 @@ export default function Consultation() {
 
   // patient data
   const [data, setData] = useState({});
-  useEffect(() => { if (loggedIn) setData(getPatientData()); }, [loggedIn]);
+  useEffect(() => { if (loggedIn) setData(getPatientData(user)); }, [loggedIn, user]);
 
   // doctor updates per section
   const [updates, setUpdates] = useState(() => readLS('consult_doctor_updates', {}));

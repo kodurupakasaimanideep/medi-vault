@@ -543,13 +543,13 @@ export default function Yoga() {
 
   // Correct Day Streak logic
   const [dayStreaks, setDayStreaks] = useState(() => {
-    return parseInt(localStorage.getItem('yoga_day_streaks') || '0', 10);
+    return parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
   });
   
   // Track completed videos per level: { "l1v1": true, "l1v2": true, ... }
   const [completedVideos, setCompletedVideos] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('yoga_completed_videos') || '{}');
+      return JSON.parse(localStorage.getItem(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos') || '{}');
     } catch { return {}; }
   });
 
@@ -584,10 +584,10 @@ export default function Yoga() {
   // Level 1 and 2 daily streaks and countdown states
   const [l1ResetCountdown, setL1ResetCountdown] = useState('');
   const [l1CompletedToday, setL1CompletedToday] = useState(() => {
-    return localStorage.getItem('yoga_l1_completion_time') !== null;
+    return localStorage.getItem(user?.id ? `yoga_l1_completion_time_${user.id}` : 'yoga_l1_completion_time') !== null;
   });
   const [l2CompletedToday, setL2CompletedToday] = useState(() => {
-    return localStorage.getItem('yoga_l2_completion_time') !== null;
+    return localStorage.getItem(user?.id ? `yoga_l2_completion_time_${user.id}` : 'yoga_l2_completion_time') !== null;
   });
 
   // ── OM background audio — plays only during Level 1 asanas ──
@@ -618,13 +618,13 @@ export default function Yoga() {
 
   // Save completed videos to localStorage
   useEffect(() => {
-    localStorage.setItem('yoga_completed_videos', JSON.stringify(completedVideos));
-  }, [completedVideos]);
+    localStorage.setItem(user?.id ? `yoga_completed_videos_${user.id}` : 'yoga_completed_videos', JSON.stringify(completedVideos));
+  }, [completedVideos, user]);
 
   // Save uploaded videos to localStorage
   useEffect(() => {
-    localStorage.setItem('yoga_uploaded_videos', JSON.stringify(uploadedVideos));
-  }, [uploadedVideos]);
+    localStorage.setItem(user?.id ? `yoga_uploaded_videos_${user.id}` : 'yoga_uploaded_videos', JSON.stringify(uploadedVideos));
+  }, [uploadedVideos, user]);
 
   // Get next video in the current level for autoplay
   const getNextVideo = useCallback((levelId, currentVideoId) => {
@@ -643,9 +643,20 @@ export default function Yoga() {
     return null;
   }, [level3Gender]);
 
-  // Verify and reset streak if missed on mount
+  // Verify and reset streak if missed on mount, and sync states when user changes
   useEffect(() => {
-    const lastStreakDate = localStorage.getItem('yoga_last_streak_date');
+    if (user?.id) {
+      setDayStreaks(parseInt(localStorage.getItem(`yoga_day_streaks_${user.id}`) || '0', 10));
+      try {
+        setCompletedVideos(JSON.parse(localStorage.getItem(`yoga_completed_videos_${user.id}`) || '{}'));
+      } catch {
+        setCompletedVideos({});
+      }
+      setL1CompletedToday(localStorage.getItem(`yoga_l1_completion_time_${user.id}`) !== null);
+      setL2CompletedToday(localStorage.getItem(`yoga_l2_completion_time_${user.id}`) !== null);
+    }
+
+    const lastStreakDate = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date');
     if (lastStreakDate) {
       const today = new Date().toDateString();
       const yesterday = new Date();
@@ -654,12 +665,12 @@ export default function Yoga() {
       
       // If last completed date is neither today nor yesterday, streak is broken!
       if (lastStreakDate !== today && lastStreakDate !== yesterdayStr) {
-        localStorage.setItem('yoga_day_streaks', '0');
-        localStorage.setItem('yoga_streaks', '0');
+        localStorage.setItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks', '0');
+        localStorage.setItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks', '0');
         setDayStreaks(0);
       }
     }
-  }, []);
+  }, [user]);
 
   const checkIfResetNeeded = useCallback(() => {
     const lastReset = localStorage.getItem('yoga_last_reset_date');
@@ -819,7 +830,7 @@ export default function Yoga() {
         
         // Save the activity timestamp in localStorage for the 24 hour reset!
         if (activeVideo.levelId === 1 || activeVideo.levelId === 2) {
-          localStorage.setItem('yoga_last_activity_time', Date.now().toString());
+          localStorage.setItem(user?.id ? `yoga_last_activity_time_${user.id}` : 'yoga_last_activity_time', Date.now().toString());
         }
 
         // Check if level 1 is completed
@@ -829,8 +840,8 @@ export default function Yoga() {
           const wasLevel1Completed = level1Videos.every(v => prev[v.id]);
           
           if (level1Completed && !wasLevel1Completed) {
-            localStorage.setItem('yoga_l1_completion_time', Date.now().toString());
-            localStorage.setItem('yoga_level2_unlocked_permanently', 'true');
+            localStorage.setItem(user?.id ? `yoga_l1_completion_time_${user.id}` : 'yoga_l1_completion_time', Date.now().toString());
+            localStorage.setItem(user?.id ? `yoga_level2_unlocked_permanently_${user.id}` : 'yoga_level2_unlocked_permanently', 'true');
             setL1CompletedToday(true);
             updateDayStreak();
             setTimeout(() => setShowStreakModal(true), 500);
@@ -844,7 +855,7 @@ export default function Yoga() {
           const wasLevel2Completed = level2Videos.every(v => prev[v.id]);
           
           if (level2Completed && !wasLevel2Completed) {
-            localStorage.setItem('yoga_l2_completion_time', Date.now().toString());
+            localStorage.setItem(user?.id ? `yoga_l2_completion_time_${user.id}` : 'yoga_l2_completion_time', Date.now().toString());
             setL2CompletedToday(true);
             updateDayStreak();
             setTimeout(() => setShowStreakModal(true), 500);
@@ -863,21 +874,21 @@ export default function Yoga() {
   };
 
   const updateDayStreak = () => {
-    const lastStreakDate = localStorage.getItem('yoga_last_streak_date');
+    const lastStreakDate = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date');
     const today = new Date().toDateString();
     
     // Always mark today's activity in the yoga log for the Healthy Calendar
     const todayKey = new Date().toLocaleDateString('en-CA');
     try {
-      const yogaLog = JSON.parse(localStorage.getItem('yoga_activity_log') || '{}');
+      const yogaLog = JSON.parse(localStorage.getItem(user?.id ? `yoga_activity_log_${user.id}` : 'yoga_activity_log') || '{}');
       yogaLog[todayKey] = true;
-      localStorage.setItem('yoga_activity_log', JSON.stringify(yogaLog));
+      localStorage.setItem(user?.id ? `yoga_activity_log_${user.id}` : 'yoga_activity_log', JSON.stringify(yogaLog));
     } catch (e) {
       console.error(e);
     }
 
     if (lastStreakDate !== today) {
-      let currentStreak = parseInt(localStorage.getItem('yoga_day_streaks') || '0', 10);
+      let currentStreak = parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       
@@ -887,15 +898,15 @@ export default function Yoga() {
         currentStreak = 1; // Start new streak
       }
       
-      localStorage.setItem('yoga_day_streaks', currentStreak.toString());
-      localStorage.setItem('yoga_streaks', currentStreak.toString()); // Sync Dashboard key
-      localStorage.setItem('yoga_last_streak_date', today);
+      localStorage.setItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks', currentStreak.toString());
+      localStorage.setItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks', currentStreak.toString()); // Sync Dashboard key
+      localStorage.setItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date', today);
       setDayStreaks(currentStreak);
     }
   };
 
   const canPlayVideo = (levelId, videoId) => {
-    if (levelId === 2 && localStorage.getItem('yoga_level2_unlocked_permanently') !== 'true') {
+    if (levelId === 2 && localStorage.getItem(user?.id ? `yoga_level2_unlocked_permanently_${user.id}` : 'yoga_level2_unlocked_permanently') !== 'true') {
       return false;
     }
     const level = LEVELS[levelId];
@@ -1166,7 +1177,7 @@ export default function Yoga() {
       {/* Level Navigation Tabs */}
       <div className="yoga-level-tabs">
         {[1, 2, 3, 4, 5].map(lvl => {
-          const isL2Locked = lvl === 2 && localStorage.getItem('yoga_level2_unlocked_permanently') !== 'true';
+          const isL2Locked = lvl === 2 && localStorage.getItem(user?.id ? `yoga_level2_unlocked_permanently_${user.id}` : 'yoga_level2_unlocked_permanently') !== 'true';
           return (
             <a 
               key={lvl} 

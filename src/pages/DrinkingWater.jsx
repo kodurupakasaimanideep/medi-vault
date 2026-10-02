@@ -819,11 +819,13 @@ const JUICE_DATA = [
 const JUICE_USES = ['Hydration', 'Immunity', 'Energy', 'Digestion', 'Heart health', 'Detox', 'Eye health', 'Metabolism'];
 
 
-function loadStore() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch { return {}; }
+function loadStore(user) {
+  const key = user?.id ? `${LS_KEY}_${user.id}` : LS_KEY;
+  try { return JSON.parse(localStorage.getItem(key)) || {}; } catch { return {}; }
 }
-function saveStore(data) {
-  localStorage.setItem(LS_KEY, JSON.stringify(data));
+function saveStore(data, user) {
+  const key = user?.id ? `${LS_KEY}_${user.id}` : LS_KEY;
+  localStorage.setItem(key, JSON.stringify(data));
 }
 
 /* water drop SVG fill animation */
@@ -936,7 +938,7 @@ export default function DrinkingWater({ user }) {
     return uses;
   };
 
-  const store = loadStore();
+  const store = loadStore(user);
   const todayKey = TODAY();
 
   /* ── STATE ── */
@@ -971,15 +973,28 @@ export default function DrinkingWater({ user }) {
   const totalDrank = todayLogs.reduce((s, l) => s + l.amount, 0);
   const percent = (totalDrank / target) * 100;
 
+  // Sync state when user changes
+  useEffect(() => {
+    if (user?.id) {
+      const uStore = loadStore(user);
+      setTarget(uStore.target || 2500);
+      setTodayLogs(uStore[todayKey]?.logs || []);
+      setHistory(uStore.history || {});
+      setReminders(uStore.reminders || []);
+      setRemindersOn(uStore.remindersOn ?? false);
+    }
+  }, [user, todayKey]);
+
   /* ── PERSIST ── */
   useEffect(() => {
-    const store = loadStore();
+    const store = loadStore(user);
     store.target = target;
     store[todayKey] = { logs: todayLogs, total: totalDrank };
     store.history = history;
     store.reminders = reminders;
     store.remindersOn = remindersOn;
-    saveStore(store);
+    saveStore(store, user);
+    window.dispatchEvent(new CustomEvent('medivault_water_updated'));
     // Sync water reminders to service worker for background notifications
     syncWaterRemindersToSW(reminders, remindersOn);
     // Sync to Firestore for closed-app notifications
