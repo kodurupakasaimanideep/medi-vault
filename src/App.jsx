@@ -6,6 +6,7 @@ import { Moon } from 'lucide-react';
 import { getIdealSleepRange } from './utils/sleepHelper';
 import ProtectedRoute from './contexts/ProtectedRoute';
 import { initFirebaseSync, stopFirebaseSync, clearLocalAppData } from './services/firebaseSync';
+import { clearUserAlarmsFromSW } from './services/swManager';
 import { LanguageProvider } from './contexts/LanguageContext';
 import PersonalDetailsModal from './components/PersonalDetailsModal';
 
@@ -217,6 +218,7 @@ function AppShell({ theme, toggleTheme }) {
 
   const handleLogout = async () => {
     await stopFirebaseSync();
+    await clearUserAlarmsFromSW();
     clearLocalAppData(); // Remove all app keys from localStorage for privacy
     await logout();
   };

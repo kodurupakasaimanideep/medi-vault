@@ -10,6 +10,7 @@ import {
   FileText, Brain, Clock, X, TrendingUp, Flame, Star, Moon
 } from 'lucide-react';
 import { getIdealSleepRange } from '../utils/sleepHelper';
+import { getStreak, recordDailyActivity, getRecentStreakDays } from '../utils/streakHelper';
 
 export default function Dashboard({ user }) {
   const navigate = useNavigate();
@@ -487,8 +488,12 @@ export default function Dashboard({ user }) {
   };
 
   useEffect(() => {
-    setYogaStreaks(parseInt(localStorage.getItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks') || '0', 10));
-  }, [user]);
+    if (user?.id || user?.uid) {
+      const currentStreak = getStreak(user);
+      setYogaStreaks(currentStreak.count);
+      recordDailyActivity(user, 'daily_visit');
+    }
+  }, [user?.id, user?.uid]);
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -601,23 +606,25 @@ export default function Dashboard({ user }) {
         sleep: { pct: sleepPct || 0, text: sleepText }
       });
 
-      // Live update yoga streaks
-      const latestStreak = parseInt(localStorage.getItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks') || localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
-      setYogaStreaks(latestStreak);
+      // Live update per-user streaks
+      const streakInfo = getStreak(user);
+      setYogaStreaks(streakInfo.count);
     };
     
     fetchStats();
     window.addEventListener('medivault_sleep_logged', fetchStats);
     window.addEventListener('medivault_water_logged', fetchStats);
     window.addEventListener('medivault_water_updated', fetchStats);
+    window.addEventListener('medivault_streak_updated', fetchStats);
     const interval = setInterval(fetchStats, 2000); // Check every 2s for cross-tab updates
     return () => {
       window.removeEventListener('medivault_sleep_logged', fetchStats);
       window.removeEventListener('medivault_water_logged', fetchStats);
       window.removeEventListener('medivault_water_updated', fetchStats);
+      window.removeEventListener('medivault_streak_updated', fetchStats);
       clearInterval(interval);
     };
-  }, [lang, user?.id]);
+  }, [lang, user?.id, user?.uid]);
 
   const quickActions = [
     { label: ct('medicalSlips'), path: '/medical-slips', icon: FileText, color: '#ef4444' },
@@ -921,11 +928,12 @@ export default function Dashboard({ user }) {
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', fontWeight: 'bold' }}>{ct('daysStreak')} 🔥</div>
               {/* Streak dots */}
               <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '8px' }}>
-                {Array.from({ length: 7 }, (_, i) => (
-                  <div key={i} style={{
+                {getRecentStreakDays(user, 7).map((d, i) => (
+                  <div key={i} title={`${d.dayName}: ${d.isCompleted ? 'Completed 🔥' : 'No Activity'}`} style={{
                     width: '10px', height: '10px', borderRadius: '50%',
-                    background: i < Math.min(yogaStreaks, 7) ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--border)',
-                    boxShadow: i < Math.min(yogaStreaks, 7) ? '0 0 6px rgba(249,115,22,0.6)' : 'none'
+                    background: d.isCompleted ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--border)',
+                    boxShadow: d.isCompleted ? '0 0 6px rgba(249,115,22,0.6)' : 'none',
+                    border: d.isToday ? '1px solid #f97316' : 'none'
                   }} />
                 ))}
               </div>

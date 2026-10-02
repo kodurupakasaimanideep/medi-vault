@@ -333,8 +333,11 @@ export default function TabletAlarm({ user }) {
   const ct = (key) => localT[lang]?.[key] || localT['en']?.[key];
 
   useEffect(() => {
-    // Load alarms from local storage
-    const saved = localStorage.getItem('medivault_alarms');
+    const uid = user?.id || user?.uid || 'guest';
+    const userAlarmKey = `medivault_alarms_${uid}`;
+    
+    // Load alarms from local storage (user-scoped first, then fallback to general)
+    const saved = localStorage.getItem(userAlarmKey) || localStorage.getItem('medivault_alarms');
     let initialAlarms;
     if (saved) {
       initialAlarms = JSON.parse(saved);
@@ -344,10 +347,11 @@ export default function TabletAlarm({ user }) {
         { id: Date.now(), tablet: 'Paracetamol', time: '08:00', music: 'Gentle Chime', color: '#8b5cf6', active: true }
       ];
       setAlarms(initialAlarms);
+      localStorage.setItem(userAlarmKey, JSON.stringify(initialAlarms));
       localStorage.setItem('medivault_alarms', JSON.stringify(initialAlarms));
     }
     // Sync to SW immediately so background notifications are ready
-    syncTabletAlarmsToSW(initialAlarms);
+    syncTabletAlarmsToSW(initialAlarms, uid);
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'tablet', initialAlarms);
@@ -356,7 +360,7 @@ export default function TabletAlarm({ user }) {
     requestNotificationPermission();
 
     // Load custom voices
-    const savedVoices = localStorage.getItem('medivault_human_voices');
+    const savedVoices = localStorage.getItem(`medivault_human_voices_${uid}`) || localStorage.getItem('medivault_human_voices');
     let loadedVoices = [];
     if (savedVoices) {
       loadedVoices = JSON.parse(savedVoices);
@@ -372,10 +376,11 @@ export default function TabletAlarm({ user }) {
         const newVoice = { id: legacyId, name: 'My Old Recording', url: legacyAudio };
         const updatedVoices = [newVoice, ...loadedVoices];
         setVoices(updatedVoices);
+        localStorage.setItem(`medivault_human_voices_${uid}`, JSON.stringify(updatedVoices));
         localStorage.setItem('medivault_human_voices', JSON.stringify(updatedVoices));
         
-        // Ensure any old alarms pointing to 'Human Voice' are properly redirected to point to the migrated ID
-        let currentAlarms = JSON.parse(localStorage.getItem('medivault_alarms') || '[]');
+        // Ensure any old alarms pointing to 'Human Voice' are properly redirected
+        let currentAlarms = JSON.parse(localStorage.getItem(userAlarmKey) || '[]');
         let needsMigration = false;
         const migratedAlarms = currentAlarms.map(a => {
           if (a.music === 'Human Voice' || a.music === 'Custom Vocals') {
@@ -386,10 +391,10 @@ export default function TabletAlarm({ user }) {
         });
         if (needsMigration) {
            setAlarms(migratedAlarms);
+           localStorage.setItem(userAlarmKey, JSON.stringify(migratedAlarms));
            localStorage.setItem('medivault_alarms', JSON.stringify(migratedAlarms));
         }
       }
-      // Remove the old key so it doesn't trigger again
       localStorage.removeItem('medivault_custom_alarm');
     }
 
@@ -398,13 +403,15 @@ export default function TabletAlarm({ user }) {
     if (savedVolume) {
       setVolume(parseFloat(savedVolume));
     }
-  }, [user?.uid]);
+  }, [user?.id, user?.uid]);
 
   const saveAlarms = (updated) => {
+    const uid = user?.id || user?.uid || 'guest';
     setAlarms(updated);
+    localStorage.setItem(`medivault_alarms_${uid}`, JSON.stringify(updated));
     localStorage.setItem('medivault_alarms', JSON.stringify(updated));
     // Push updated alarms to service worker for background notifications
-    syncTabletAlarmsToSW(updated);
+    syncTabletAlarmsToSW(updated, uid);
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'tablet', updated);

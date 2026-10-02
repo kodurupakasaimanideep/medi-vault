@@ -1,21 +1,21 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MediVault Service Worker v4 — Background Notifications + Sound
+   MediVault Service Worker v6 — High-Reliability Mobile & Desktop Background Alarms
    
-   HOW SOUND WORKS:
-   - When tab is OPEN: AlarmManager plays the full custom sound directly.
-   - When tab is CLOSED (browser open):
-       1. SW fires OS notification (browser plays system notification sound)
-       2. SW stores the alarm in IndexedDB as "pending"
-       3. When user clicks notification → app tab opens → plays full sound
-       4. When app tab opens for ANY reason → it checks pending alarms → plays sound
-   
-   NOTE: Browsers cannot play audio in a Service Worker context.
-         Sound always plays in the page (tab), which is the best possible.
+   Features:
+   1. Multi-User Isolation: Stores alarms & water reminders per user UID in IndexedDB.
+   2. Precise Next Alarm Scheduling: Accurately schedules timer to the exact upcoming minute.
+   3. Mobile Background Persistence: Uses Periodic Background Sync, Keep-Alive pinging, and timer loops.
+   4. High-Priority Mobile Notifications:
+      - Loud repeating vibration pattern [500, 250, 500, 250, 500, 250, 800, 400, 800]
+      - requireInteraction: true (stays on mobile lockscreen / notification shade)
+      - silent: false (triggers device notification sound)
+      - Interactive action buttons for taking medicine, logging water, and 5-min snooze.
+   5. Instant Sound Playback: When user taps notification or opens app, plays rich audio alarm.
 ═══════════════════════════════════════════════════════════════════ */
 
-const SW_VERSION = 'medivault-sw-v5';
+const SW_VERSION = 'medivault-sw-v6';
 const DB_NAME    = 'medivault-sw-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // ── Install: activate immediately ──
 self.addEventListener('install', (event) => {
@@ -23,19 +23,18 @@ self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
-// ── Activate: take control immediately ──
+// ── Activate: claim all clients and open DB ──
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating', SW_VERSION);
   event.waitUntil(
     self.clients.claim().then(() => {
-      openDB(); // ensure DB is ready
+      return openDB();
     })
   );
 });
 
 /* ─────────────────────────────────────────────────────────────
-   IndexedDB — stores pending alarms & alarm config
-   (survives SW restarts; unlike in-memory variables)
+   IndexedDB — Persistent storage for alarms & pending triggers
 ───────────────────────────────────────────────────────────── */
 let db = null;
 
@@ -103,96 +102,110 @@ async function dbDelete(store, key) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   In-memory alarm state (loaded from IndexedDB on SW start)
+   In-memory State & Alarm Scheduling Engine
 ───────────────────────────────────────────────────────────── */
-let tabletAlarms       = [];
-let waterReminders     = [];
-let waterEnabled       = false;
-let lastFiredMinute    = -1;
-let keepAliveTimer     = null;
+let tabletAlarms        = [];
+let waterReminders      = [];
+let waterEnabled        = false;
+let activeUserId        = '';
+let lastFiredMinuteStr  = '';
+let checkTimer          = null;
 
 // Sleep tracking
-let sleepStartTimestamp = null;   // ms epoch when sleep started
-let sleepTargetHours   = 8;       // default; overridden by app
-let sleepNotifiedToday = false;   // only fire wake-up notification once per session
+let sleepStartTimestamp = null;
+let sleepTargetHours    = 8;
+let sleepNotifiedToday  = false;
 
-// Load alarm config from IndexedDB when SW starts
 async function loadConfigFromDB() {
   const ta = await dbGet('config', 'tabletAlarms');
   const wr = await dbGet('config', 'waterReminders');
   const we = await dbGet('config', 'waterEnabled');
+  const au = await dbGet('config', 'activeUserId');
   const ss = await dbGet('config', 'sleepStart');
   const st = await dbGet('config', 'sleepTarget');
+
   if (ta) tabletAlarms        = ta;
   if (wr) waterReminders      = wr;
   if (we !== null && we !== undefined) waterEnabled = we;
+  if (au) activeUserId        = au;
   if (ss) sleepStartTimestamp = ss;
   if (st) sleepTargetHours    = st;
 }
 
-// ── Load config at SW start ──
-loadConfigFromDB().then(() => startKeepAlive());
+// Load config and start scheduling loop
+loadConfigFromDB().then(() => scheduleNextAlarmCheck());
 
 /* ─────────────────────────────────────────────────────────────
-   Keep-Alive Loop — uses recursive setTimeout + waitUntil
-   This keeps the SW alive by constantly extending its lifetime.
+   Dynamic Alarm Scheduling Loop
+   Calculates exact milliseconds to the next alarm minute.
 ───────────────────────────────────────────────────────────── */
-function startKeepAlive() {
-  if (keepAliveTimer) return;
-  scheduleCheck();
-}
+function scheduleNextAlarmCheck() {
+  if (checkTimer) clearTimeout(checkTimer);
 
-function scheduleCheck() {
-  keepAliveTimer = setTimeout(() => {
-    // Use a fake event to extend SW lifetime during check
-    const checkPromise = doCheck();
-    // Schedule next check regardless
-    keepAliveTimer = null;
-    scheduleCheck();
-    return checkPromise;
-  }, 25000); // every 25 seconds
+  const now = new Date();
+  const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 500;
+  // Check every 15-20 seconds or at the start of the next minute
+  const nextCheckDelay = Math.min(Math.max(msToNextMinute, 1000), 20000);
+
+  checkTimer = setTimeout(() => {
+    doCheck()
+      .catch((err) => console.error('[SW] Error during check:', err))
+      .finally(() => scheduleNextAlarmCheck());
+  }, nextCheckDelay);
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Message handler — syncs data from open app tab to SW
+   Message Handler — Syncs from page tabs to SW
 ───────────────────────────────────────────────────────────── */
 self.addEventListener('message', (event) => {
-  const { type, payload } = event.data || {};
+  const { type, payload, userId } = event.data || {};
 
   if (type === 'SYNC_TABLET_ALARMS') {
-    tabletAlarms = payload || [];
+    tabletAlarms = Array.isArray(payload) ? payload : (payload?.alarms || []);
+    if (userId) activeUserId = userId;
     dbSet('config', 'tabletAlarms', tabletAlarms);
-    startKeepAlive();
+    if (userId) dbSet('config', 'activeUserId', activeUserId);
+    scheduleNextAlarmCheck();
   }
 
   if (type === 'SYNC_WATER_REMINDERS') {
-    waterReminders = payload.reminders || [];
-    waterEnabled   = payload.enabled   || false;
+    waterReminders = payload?.reminders || [];
+    waterEnabled   = payload?.enabled ?? false;
+    if (userId) activeUserId = userId;
     dbSet('config', 'waterReminders', waterReminders);
     dbSet('config', 'waterEnabled', waterEnabled);
-    startKeepAlive();
+    if (userId) dbSet('config', 'activeUserId', activeUserId);
+    scheduleNextAlarmCheck();
+  }
+
+  if (type === 'CLEAR_USER_ALARMS') {
+    tabletAlarms = [];
+    waterReminders = [];
+    waterEnabled = false;
+    activeUserId = '';
+    dbSet('config', 'tabletAlarms', []);
+    dbSet('config', 'waterReminders', []);
+    dbSet('config', 'waterEnabled', false);
+    dbSet('config', 'activeUserId', '');
   }
 
   // ── Sleep tracking sync ──
   if (type === 'SYNC_SLEEP_START') {
-    // App started sleep mode — store start time + target in IndexedDB
     sleepStartTimestamp = payload.startTime || Date.now();
     sleepTargetHours    = payload.targetHours || 8;
     sleepNotifiedToday  = false;
     dbSet('config', 'sleepStart', sleepStartTimestamp);
     dbSet('config', 'sleepTarget', sleepTargetHours);
-    startKeepAlive();
+    scheduleNextAlarmCheck();
   }
 
   if (type === 'SYNC_SLEEP_STOP') {
-    // App stopped sleep mode (user woke up) — clear stored sleep data
     sleepStartTimestamp = null;
     sleepNotifiedToday  = false;
     dbSet('config', 'sleepStart', null);
   }
 
   if (type === 'PING') {
-    // App tab is open and pinging us — reply with PONG and any pending alarms
     event.waitUntil(
       (async () => {
         const pending = await dbGetAll('pending');
@@ -206,13 +219,11 @@ self.addEventListener('message', (event) => {
   }
 
   if (type === 'CLEAR_PENDING') {
-    // App has handled a pending alarm — clear it
     const { key } = payload || {};
     if (key) dbDelete('pending', key);
   }
 
   if (type === 'CLEAR_ALL_PENDING') {
-    // App handled all pending alarms
     event.waitUntil(clearAllPending());
   }
 });
@@ -225,58 +236,60 @@ async function clearAllPending() {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Core alarm checking
+   Core Alarm Check (Runs in background & foreground)
 ───────────────────────────────────────────────────────────── */
 async function doCheck() {
-  const now        = new Date();
-  const currentMin = now.getHours() * 60 + now.getMinutes();
-  const todayStr   = now.toISOString().split('T')[0];
+  const now = new Date();
+  const currentHours = now.getHours();
+  const currentMinutes = now.getMinutes();
+  const currentMin = currentHours * 60 + currentMinutes;
+  const todayStr = now.toISOString().split('T')[0];
+  const minuteKey = `${todayStr}_${currentHours}:${currentMinutes}`;
 
-  // Avoid double-firing in same minute
-  if (currentMin === lastFiredMinute) return;
-  lastFiredMinute = currentMin;
-
-  // ── Tablet alarms ──
+  // ── Tablet Alarms ──
   for (const alarm of tabletAlarms) {
-    if (!alarm.active) continue;
-    const [h, m]    = alarm.time.split(':').map(Number);
-    const alarmMin  = h * 60 + m;
-    const diff      = currentMin - alarmMin;
+    if (!alarm.active || !alarm.time) continue;
+    const [h, m] = alarm.time.split(':').map(Number);
+    const alarmMin = h * 60 + m;
+    const diff = currentMin - alarmMin;
 
+    // Trigger within 0 to 2 minutes of scheduled time if not fired today
     if (diff >= 0 && diff <= 2 && alarm.lastTriggered !== todayStr) {
-      // Mark as fired today in memory + DB
+      alarm.lastTriggered = todayStr;
+      
+      // Update in-memory & IndexedDB
       tabletAlarms = tabletAlarms.map((a) =>
         a.id === alarm.id ? { ...a, lastTriggered: todayStr } : a
       );
       await dbSet('config', 'tabletAlarms', tabletAlarms);
 
-      // Store as pending so app can play sound when it opens
       const pendingKey = `tablet-${alarm.id}-${todayStr}`;
       await dbSet('pending', pendingKey, {
-        key:      pendingKey,
-        type:     'tablet',
+        key: pendingKey,
+        type: 'tablet',
         alarm,
         todayStr,
-        firedAt:  Date.now(),
+        firedAt: Date.now(),
       });
 
-      // Show OS notification
+      // 1. Show High-Priority Mobile / Desktop Notification
       await fireTabletNotification(alarm);
 
-      // If app is already open, tell it to play sound immediately
+      // 2. If app is currently open, trigger full sound immediately
       await notifyClientsToPlaySound(alarm, 'tablet');
     }
   }
 
-  // ── Water reminders ──
-  if (waterEnabled) {
+  // ── Water Reminders ──
+  if (waterEnabled && Array.isArray(waterReminders)) {
     for (const r of waterReminders) {
-      if (!r.enabled) continue;
+      if (!r.enabled || !r.time24) continue;
       const [rh, rm] = r.time24.split(':').map(Number);
-      const rMin     = rh * 60 + rm;
-      const diff     = currentMin - rMin;
+      const rMin = rh * 60 + rm;
+      const diff = currentMin - rMin;
 
       if (diff >= 0 && diff <= 2 && r.lastTriggered !== todayStr) {
+        r.lastTriggered = todayStr;
         waterReminders = waterReminders.map((wr) =>
           wr.id === r.id ? { ...wr, lastTriggered: todayStr } : wr
         );
@@ -284,8 +297,8 @@ async function doCheck() {
 
         const pendingKey = `water-${r.id}-${todayStr}`;
         await dbSet('pending', pendingKey, {
-          key:     pendingKey,
-          type:    'water',
+          key: pendingKey,
+          type: 'water',
           reminder: r,
           todayStr,
           firedAt: Date.now(),
@@ -297,99 +310,112 @@ async function doCheck() {
     }
   }
 
-  // ── Sleep tracking — fire wake-up notification when target hours reached ──
+  // ── Sleep Tracking Wake-Up Alert ──
   if (sleepStartTimestamp && !sleepNotifiedToday) {
-    const elapsedMs    = Date.now() - sleepStartTimestamp;
+    const elapsedMs = Date.now() - sleepStartTimestamp;
     const elapsedHours = elapsedMs / (1000 * 60 * 60);
 
     if (elapsedHours >= sleepTargetHours) {
-      sleepNotifiedToday = true; // fire only once
+      sleepNotifiedToday = true;
       const hoursSlept = elapsedHours.toFixed(1);
       await fireSleepWakeNotification(hoursSlept, sleepTargetHours);
     }
   }
+
+  lastFiredMinuteStr = minuteKey;
 }
 
 /* ─────────────────────────────────────────────────────────────
-   OS Notifications
+   High-Priority Native OS Notifications (Mobile & Desktop)
 ───────────────────────────────────────────────────────────── */
 async function fireTabletNotification(alarm) {
-  return self.registration.showNotification('💊 Medicine Reminder!', {
-    body:             `${alarm.time} — Time to take: ${alarm.tablet}\n🔔 Tap to open app & hear alarm sound`,
-    icon:             '/favicon.svg',
-    badge:            '/favicon.svg',
-    tag:              `tablet-alarm-${alarm.id}`,
-    requireInteraction: true,
-    silent:           false,        // Let OS play its notification sound
-    vibrate:          [300, 100, 300, 100, 300, 100, 600],
-    data:             { type: 'tablet', alarmId: alarm.id, alarm, url: '/tablet-alarm' },
+  const soundName = alarm.music || 'Gentle Chime';
+  return self.registration.showNotification(`💊 Medicine Alarm: ${alarm.tablet}`, {
+    body: `⏰ Time: ${alarm.time} — It's time to take your dose of ${alarm.tablet}!\n🔔 Tap to open MediVault and turn off alarm.`,
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    tag: `tablet-alarm-${alarm.id}-${Date.now()}`,
+    requireInteraction: true, // Remains on mobile lockscreen until user interacts
+    silent: false,            // Ensures phone notification ringtone plays
+    renotify: true,
+    vibrate: [500, 250, 500, 250, 500, 250, 800, 400, 800], // Loud repeating mobile vibration
+    data: {
+      type: 'tablet',
+      alarmId: alarm.id,
+      alarm,
+      url: '/tablet-alarm',
+    },
     actions: [
       { action: 'open',   title: '▶ Open & Play Sound' },
-      { action: 'snooze', title: '⏰ Snooze 5 min' },
       { action: 'taken',  title: '✓ Taken!' },
+      { action: 'snooze', title: '⏰ Snooze 5 min' },
     ],
   });
 }
 
 async function fireWaterNotification(reminder) {
-  return self.registration.showNotification('💧 Hydration Reminder — MediVault', {
-    body:             `It's ${reminder.time}! Time to drink water 🌊\nTap to open app & hear reminder`,
-    icon:             '/favicon.svg',
-    badge:            '/favicon.svg',
-    tag:              `water-reminder-${reminder.id}`,
-    requireInteraction: false,
-    silent:           false,
-    vibrate:          [200, 100, 200],
-    data:             { type: 'water', reminderId: reminder.id, reminder, url: '/drinking-water' },
+  return self.registration.showNotification('💧 Hydration Alarm — Time to Drink Water!', {
+    body: `🌊 It's ${reminder.time || reminder.time24}! Keep your body hydrated.\nTap to log 250ml water.`,
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    tag: `water-reminder-${reminder.id}-${Date.now()}`,
+    requireInteraction: true,
+    silent: false,
+    renotify: true,
+    vibrate: [400, 200, 400, 200, 600],
+    data: {
+      type: 'water',
+      reminderId: reminder.id,
+      reminder,
+      url: '/drinking-water',
+    },
     actions: [
-      { action: 'open',   title: '💧 Open & Play Sound' },
       { action: 'logged', title: '✓ Log 250ml' },
-      { action: 'dismiss', title: 'OK' },
+      { action: 'open',   title: '💧 Open App' },
+      { action: 'dismiss', title: 'Dismiss' },
     ],
   });
 }
 
 async function fireSleepWakeNotification(hoursSlept, targetHours) {
   return self.registration.showNotification('🌅 Good Morning! — MediVault', {
-    body:             `You've slept for ${hoursSlept} hours (target: ${targetHours}h) 🌙\nTap to open MediVault & log your sleep.`,
-    icon:             '/favicon.svg',
-    badge:            '/favicon.svg',
-    tag:              'sleep-wake-notification',
+    body: `You've completed ${hoursSlept} hours of sleep (target: ${targetHours}h) 🌙\nTap to record your sleep score.`,
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    tag: 'sleep-wake-notification',
     requireInteraction: true,
-    silent:           false,
-    vibrate:          [500, 200, 500],
-    data:             { type: 'sleep', url: '/dashboard' },
+    silent: false,
+    vibrate: [500, 300, 500],
+    data: { type: 'sleep', url: '/dashboard' },
     actions: [
-      { action: 'open',   title: '🌅 Open & Log Sleep' },
-      { action: 'dismiss', title: '✓ OK, continue sleeping' },
+      { action: 'open', title: '🌅 Open & Log Sleep' },
+      { action: 'dismiss', title: 'OK' },
     ],
   });
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Tell open app windows to play alarm sound immediately
-   (if tab is open, this triggers the full sound+modal)
+   Broadcast to open tabs (for in-page audio engine)
 ───────────────────────────────────────────────────────────── */
-async function notifyClientsToPlaySound(alarm, type) {
-  const clients = await self.clients.matchAll({ type: 'window' });
+async function notifyClientsToPlaySound(alarm) {
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   clients.forEach((c) => c.postMessage({ type: 'PLAY_ALARM_SOUND', alarm }));
 }
 
 async function notifyClientsToPlayWaterSound(reminder) {
-  const clients = await self.clients.matchAll({ type: 'window' });
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
   clients.forEach((c) => c.postMessage({ type: 'PLAY_WATER_SOUND', reminder }));
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Notification click — open app & trigger sound
+   Notification Click Event (Mobile & Desktop Interaction)
 ───────────────────────────────────────────────────────────── */
 self.addEventListener('notificationclick', (event) => {
-  const data    = event.notification.data || {};
-  const action  = event.action;
+  const data   = event.notification.data || {};
+  const action = event.action;
   event.notification.close();
 
-  // "Taken" or "dismiss" — just close (for tablet & water)
-  // For sleep, "dismiss" means "continue sleeping" — also just close
+  // Action: Medicine Taken / Dismissed
   if (action === 'taken' || action === 'dismiss') {
     if (data.type === 'tablet' && data.alarmId) {
       dbDelete('pending', `tablet-${data.alarmId}-${new Date().toISOString().split('T')[0]}`);
@@ -397,16 +423,10 @@ self.addEventListener('notificationclick', (event) => {
     if (data.type === 'water' && data.reminderId) {
       dbDelete('pending', `water-${data.reminderId}-${new Date().toISOString().split('T')[0]}`);
     }
-    // For sleep dismiss: reset so a new notification can fire after more sleeping
-    if (data.type === 'sleep') {
-      sleepNotifiedToday = false;
-      // Add 1.5 hours to target so next notification fires after more rest
-      sleepTargetHours += 1.5;
-    }
     return;
   }
 
-  // "Snooze" — re-fire in 5 minutes
+  // Action: 5-minute Snooze
   if (action === 'snooze') {
     setTimeout(async () => {
       if (data.type === 'tablet' && data.alarm) {
@@ -416,11 +436,11 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // "Log water" action from notification
+  // Action: Quick-log water (250ml) directly from notification
   if (action === 'logged') {
     event.waitUntil(
       (async () => {
-        const clients = await self.clients.matchAll({ type: 'window' });
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         clients.forEach((c) => c.postMessage({ type: 'QUICK_LOG_WATER', amount: 250 }));
         if (data.reminderId) {
           dbDelete('pending', `water-${data.reminderId}-${new Date().toISOString().split('T')[0]}`);
@@ -430,16 +450,15 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Default: "open" action OR click anywhere → open/focus app + play sound
+  // Default: Open or Focus the app window & play alarm sound
   const targetUrl = data.url || '/';
   event.waitUntil(
     (async () => {
-      const clients   = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      const existing  = clients.find((c) => c.url.includes(self.location.origin));
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const existing = clients.find((c) => c.url.includes(self.location.origin));
 
       if (existing) {
         await existing.focus();
-        // Tell the open tab to play the alarm sound and navigate
         if (data.type === 'tablet' && data.alarm) {
           existing.postMessage({ type: 'PLAY_ALARM_SOUND', alarm: data.alarm });
         }
@@ -448,7 +467,7 @@ self.addEventListener('notificationclick', (event) => {
         }
         existing.postMessage({ type: 'NAVIGATE', url: targetUrl });
       } else {
-        // Open a new tab — the pending alarms in IndexedDB will trigger sound on load
+        // Open new window on mobile / desktop
         await self.clients.openWindow(targetUrl);
       }
     })()
@@ -456,7 +475,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 /* ─────────────────────────────────────────────────────────────
-   Periodic Background Sync (Chrome) — wakes SW periodically
+   Periodic Background Sync (Chrome & Android)
 ───────────────────────────────────────────────────────────── */
 self.addEventListener('periodicsync', (event) => {
   if (event.tag === 'medivault-alarm-check') {
@@ -465,9 +484,8 @@ self.addEventListener('periodicsync', (event) => {
 });
 
 /* ─────────────────────────────────────────────────────────────
-   Fetch event — minimal handler to activate SW control faster
+   Fetch Event (Service Worker Passthrough)
 ───────────────────────────────────────────────────────────── */
 self.addEventListener('fetch', (event) => {
-  // Pass through all requests — we just need this for SW to control pages
   event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
 });

@@ -7,6 +7,7 @@ import {
 import ChatBot from '../components/ChatBot';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getStreak, recordDailyActivity } from '../utils/streakHelper';
 import './Yoga.css';
 import omSound from './ribhavagrawal-ancient-spirit-echoes-om-chanting-234045.mp3';
 
@@ -541,9 +542,9 @@ export default function Yoga({ user }) {
   const [currentSlogan] = useState(() => motivationSlogans[new Date().getDay() % motivationSlogans.length]);
   const [showStreakModal, setShowStreakModal] = useState(false);
 
-  // Correct Day Streak logic
+  // Correct Day Streak logic using unified streak engine
   const [dayStreaks, setDayStreaks] = useState(() => {
-    return parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
+    return getStreak(user).count;
   });
   
   // Track completed videos per level: { "l1v1": true, "l1v2": true, ... }
@@ -556,7 +557,7 @@ export default function Yoga({ user }) {
   // Track uploaded custom videos: { "l1v1": "blob:...", ... }
   const [uploadedVideos, setUploadedVideos] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('yoga_uploaded_videos') || '{}');
+      return JSON.parse(localStorage.getItem(user?.id ? `yoga_uploaded_videos_${user.id}` : 'yoga_uploaded_videos') || '{}');
     } catch { return {}; }
   });
 
@@ -643,46 +644,33 @@ export default function Yoga({ user }) {
     return null;
   }, [level3Gender]);
 
-  // Verify and reset streak if missed on mount, and sync states when user changes
+  // Verify and sync streak and user states when user changes
   useEffect(() => {
-    if (user?.id) {
-      setDayStreaks(parseInt(localStorage.getItem(`yoga_day_streaks_${user.id}`) || '0', 10));
+    if (user?.id || user?.uid) {
+      setDayStreaks(getStreak(user).count);
       try {
-        setCompletedVideos(JSON.parse(localStorage.getItem(`yoga_completed_videos_${user.id}`) || '{}'));
+        setCompletedVideos(JSON.parse(localStorage.getItem(`yoga_completed_videos_${user.id || user.uid}`) || '{}'));
       } catch {
         setCompletedVideos({});
       }
-      setL1CompletedToday(localStorage.getItem(`yoga_l1_completion_time_${user.id}`) !== null);
-      setL2CompletedToday(localStorage.getItem(`yoga_l2_completion_time_${user.id}`) !== null);
-    }
-
-    const lastStreakDate = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date');
-    if (lastStreakDate) {
-      const today = new Date().toDateString();
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toDateString();
-      
-      // If last completed date is neither today nor yesterday, streak is broken!
-      if (lastStreakDate !== today && lastStreakDate !== yesterdayStr) {
-        localStorage.setItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks', '0');
-        localStorage.setItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks', '0');
-        setDayStreaks(0);
-      }
+      setL1CompletedToday(localStorage.getItem(`yoga_l1_completion_time_${user.id || user.uid}`) !== null);
+      setL2CompletedToday(localStorage.getItem(`yoga_l2_completion_time_${user.id || user.uid}`) !== null);
     }
   }, [user]);
 
   const checkIfResetNeeded = useCallback(() => {
-    const lastReset = localStorage.getItem('yoga_last_reset_date');
+    const uid = user?.id || user?.uid || 'guest';
+    const lastReset = localStorage.getItem(`yoga_last_reset_date_${uid}`);
     const today = new Date().toLocaleDateString('en-CA');
     if (!lastReset) {
-      localStorage.setItem('yoga_last_reset_date', today);
+      localStorage.setItem(`yoga_last_reset_date_${uid}`, today);
       return false;
     }
     return lastReset !== today;
-  }, []);
+  }, [user]);
 
   const performYogaReset = useCallback(() => {
+    const uid = user?.id || user?.uid || 'guest';
     setCompletedVideos(prev => {
       const updated = { ...prev };
       let changed = false;
@@ -693,17 +681,17 @@ export default function Yoga({ user }) {
         }
       });
       if (changed) {
-        localStorage.setItem('yoga_completed_videos', JSON.stringify(updated));
+        localStorage.setItem(`yoga_completed_videos_${uid}`, JSON.stringify(updated));
       }
       return updated;
     });
     const today = new Date().toLocaleDateString('en-CA');
-    localStorage.setItem('yoga_last_reset_date', today);
-    localStorage.removeItem('yoga_l1_completion_time');
-    localStorage.removeItem('yoga_l2_completion_time');
+    localStorage.setItem(`yoga_last_reset_date_${uid}`, today);
+    localStorage.removeItem(`yoga_l1_completion_time_${uid}`);
+    localStorage.removeItem(`yoga_l2_completion_time_${uid}`);
     setL1CompletedToday(false);
     setL2CompletedToday(false);
-  }, []);
+  }, [user]);
 
   // Check and perform reset on mount
   useEffect(() => {
@@ -874,34 +862,19 @@ export default function Yoga({ user }) {
   };
 
   const updateDayStreak = () => {
-    const lastStreakDate = localStorage.getItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date');
-    const today = new Date().toDateString();
-    
+    // Record yoga activity using the unified streak engine
+    const streakResult = recordDailyActivity(user, 'yoga');
+    setDayStreaks(streakResult.count);
+
     // Always mark today's activity in the yoga log for the Healthy Calendar
+    const uid = user?.id || user?.uid || 'guest';
     const todayKey = new Date().toLocaleDateString('en-CA');
     try {
-      const yogaLog = JSON.parse(localStorage.getItem(user?.id ? `yoga_activity_log_${user.id}` : 'yoga_activity_log') || '{}');
+      const yogaLog = JSON.parse(localStorage.getItem(`yoga_activity_log_${uid}`) || '{}');
       yogaLog[todayKey] = true;
-      localStorage.setItem(user?.id ? `yoga_activity_log_${user.id}` : 'yoga_activity_log', JSON.stringify(yogaLog));
+      localStorage.setItem(`yoga_activity_log_${uid}`, JSON.stringify(yogaLog));
     } catch (e) {
       console.error(e);
-    }
-
-    if (lastStreakDate !== today) {
-      let currentStreak = parseInt(localStorage.getItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks') || '0', 10);
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      if (lastStreakDate === yesterday.toDateString()) {
-        currentStreak += 1;
-      } else {
-        currentStreak = 1; // Start new streak
-      }
-      
-      localStorage.setItem(user?.id ? `yoga_day_streaks_${user.id}` : 'yoga_day_streaks', currentStreak.toString());
-      localStorage.setItem(user?.id ? `yoga_streaks_${user.id}` : 'yoga_streaks', currentStreak.toString()); // Sync Dashboard key
-      localStorage.setItem(user?.id ? `yoga_last_streak_date_${user.id}` : 'yoga_last_streak_date', today);
-      setDayStreaks(currentStreak);
     }
   };
 

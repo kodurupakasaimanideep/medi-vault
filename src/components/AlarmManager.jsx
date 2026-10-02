@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BellRing, X, Pill, Volume2, Music2 } from 'lucide-react';
 import { syncTabletAlarmsToSW, requestNotificationPermission, registerSoundCallback } from '../services/swManager';
+import { useAuth } from '../contexts/AuthContext';
 
 // ══════════════════════════════════════════════════════════════
 //  PEACEFUL SOUND ENGINE — 7 Gentle, Soothing Alarm Sounds
@@ -237,6 +238,12 @@ export const ALARM_SOUNDS = [
 //  ALARM MANAGER COMPONENT
 // ══════════════════════════════════════════════════════════════
 export default function AlarmManager() {
+  const auth = (() => {
+    try { return useAuth(); } catch { return {}; }
+  })();
+  const user = auth?.currentUser;
+  const uid = user?.uid || user?.id || '';
+
   const [activeAlarm, setActiveAlarm] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const soundEngineRef = useRef(null);
@@ -268,9 +275,10 @@ export default function AlarmManager() {
       requestNotificationPermission();
     }
 
+    const alarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
     // Sync alarms to service worker (persisted in SW IndexedDB)
-    const alarms = JSON.parse(localStorage.getItem('medivault_alarms') || '[]');
-    syncTabletAlarmsToSW(alarms);
+    const alarms = JSON.parse(localStorage.getItem(alarmKey) || localStorage.getItem('medivault_alarms') || '[]');
+    syncTabletAlarmsToSW(alarms, uid);
 
     // Register with SW manager so it can trigger this alarm when tab re-opens
     // after a notification was fired while the tab was closed
@@ -278,7 +286,8 @@ export default function AlarmManager() {
 
     // ── In-page alarm checker (fires when tab IS open) ──
     const checkAlarms = () => {
-      const savedAlarms = JSON.parse(localStorage.getItem('medivault_alarms') || '[]');
+      const activeAlarmKey = uid ? `medivault_alarms_${uid}` : 'medivault_alarms';
+      const savedAlarms = JSON.parse(localStorage.getItem(activeAlarmKey) || localStorage.getItem('medivault_alarms') || '[]');
       const now         = new Date();
       const currentMin  = now.getHours() * 60 + now.getMinutes();
       const todayStr    = now.toISOString().split('T')[0];
@@ -300,8 +309,9 @@ export default function AlarmManager() {
       });
 
       if (needsSave) {
+        localStorage.setItem(activeAlarmKey, JSON.stringify(updatedList));
         localStorage.setItem('medivault_alarms', JSON.stringify(updatedList));
-        syncTabletAlarmsToSW(updatedList);
+        syncTabletAlarmsToSW(updatedList, uid);
       }
     };
 
@@ -318,7 +328,7 @@ export default function AlarmManager() {
       window.removeEventListener('medivault_sw_alarm', handleSwAlarm);
       window.removeEventListener('medivault_test_alarm', handleTestAlarm);
     };
-  }, [triggerAlarm]);
+  }, [triggerAlarm, uid]);
 
   const startSound = (alarm) => {
     const baseVol = parseFloat(localStorage.getItem('medivault_alarm_volume') || '1.0');

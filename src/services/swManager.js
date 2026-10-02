@@ -1,12 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MediVault — Service Worker Manager v4
+   MediVault — Service Worker Manager v6
    
    Responsibilities:
-   1. Register SW and keep it alive with periodic pings
-   2. Sync alarm data to SW (persisted in IndexedDB)
-   3. Listen for SW messages → play sounds / update localStorage
-   4. On app load → check pending alarms → trigger sound + modal
-   5. Register Periodic Background Sync for Chrome
+   1. Register SW and maintain keep-alive background pings
+   2. Sync alarm & water data to SW IndexedDB with user isolation
+   3. Listen for SW messages → play synthesized audio / update state
+   4. On mobile/desktop app open → check pending alarms → trigger sound & modal
+   5. Support Periodic Background Sync for mobile Android/Chrome
 ═══════════════════════════════════════════════════════════════════ */
 
 let swRegistration  = null;
@@ -14,8 +14,8 @@ let keepAlivePinger = null;
 
 // Callbacks registered by AlarmManager / DrinkingWater to handle sounds
 const _soundCallbacks = {
-  playTabletAlarm:  null,   // (alarm) => void
-  playWaterSound:   null,   // (reminder) => void
+  playTabletAlarm: null,   // (alarm) => void
+  playWaterSound:  null,   // (reminder) => void
 };
 
 const getActiveUserId = () => {
@@ -29,7 +29,6 @@ const getActiveUserId = () => {
 
 /**
  * Register sound callbacks so SW messages can trigger in-page sound.
- * Called by AlarmManager and DrinkingWater on mount.
  */
 export function registerSoundCallback(type, fn) {
   _soundCallbacks[type] = fn;
@@ -52,15 +51,14 @@ export async function registerServiceWorker() {
     // Listen for ALL messages from the SW
     navigator.serviceWorker.addEventListener('message', handleSwMessage);
 
-    // Try to register Periodic Background Sync (Chrome only, requires HTTPS or localhost)
+    // Try to register Periodic Background Sync (Android / Chrome)
     await tryRegisterPeriodicSync(reg);
 
-    // Start pinging the SW every 20 seconds to keep it alive while tab is open
+    // Start pinging SW periodically to extend lifetime while tab is open
     startKeepAlivePing();
 
-    // On app load: check for pending alarms that fired while tab was closed
-    // Wait a moment for the page to fully mount before triggering sounds
-    setTimeout(() => checkPendingAlarms(), 1500);
+    // On app load: check for pending alarms that fired while closed
+    setTimeout(() => checkPendingAlarms(), 1200);
 
     return reg;
   } catch (err) {
@@ -84,14 +82,12 @@ async function tryRegisterPeriodicSync(reg) {
       }
     }
   } catch (_) {
-    // Not supported — that's OK, SW keepalive handles it
+    // Not supported in some browsers — SW timer handles it
   }
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Keep-Alive Ping — sends a PING to SW every 20 seconds
-   This extends the SW lifetime while the tab is open.
-   When the tab closes, the SW uses its own internal timer.
+   Keep-Alive Ping — sends a PING to SW periodically
 ───────────────────────────────────────────────────────────── */
 function startKeepAlivePing() {
   if (keepAlivePinger) return;
@@ -99,7 +95,6 @@ function startKeepAlivePing() {
     const controller = navigator.serviceWorker?.controller;
     if (!controller) return;
 
-    // Send a PING with a MessageChannel so SW can respond with pending alarms
     const channel = new MessageChannel();
     channel.port1.onmessage = (e) => {
       const { pending } = e.data || {};
@@ -112,9 +107,9 @@ function startKeepAlivePing() {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Check pending alarms on app load (tab was closed when alarm fired)
+   Check pending alarms on app load
 ───────────────────────────────────────────────────────────── */
-async function checkPendingAlarms() {
+export async function checkPendingAlarms() {
   const controller = navigator.serviceWorker?.controller;
   if (!controller) return;
 
@@ -129,26 +124,22 @@ async function checkPendingAlarms() {
 }
 
 /**
- * Handle pending alarms that fired while the tab was closed.
- * Plays sound + shows the in-app alarm modal.
+ * Handle pending alarms that fired while app was closed
  */
 function handlePendingAlarms(pending) {
   const now = Date.now();
   pending.forEach((item) => {
-    // Only handle alarms that fired in the last 2 hours (not super stale ones)
+    // Only handle alarms that fired within the last 2 hours
     const age = now - (item.firedAt || 0);
     if (age > 2 * 60 * 60 * 1000) {
-      // Too old — clear it silently
       sendToSW({ type: 'CLEAR_PENDING', payload: { key: item.key } });
       return;
     }
 
     if (item.type === 'tablet' && item.alarm) {
-      // Trigger the tablet alarm sound + modal
       if (_soundCallbacks.playTabletAlarm) {
         _soundCallbacks.playTabletAlarm(item.alarm);
       }
-      // Dispatch event so AlarmManager can pick it up even if callback not registered yet
       window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: item.alarm }));
     }
 
@@ -159,7 +150,6 @@ function handlePendingAlarms(pending) {
       window.dispatchEvent(new CustomEvent('medivault_sw_water', { detail: item.reminder }));
     }
 
-    // Clear the pending item from SW IndexedDB
     sendToSW({ type: 'CLEAR_PENDING', payload: { key: item.key } });
   });
 }
@@ -170,32 +160,32 @@ function handlePendingAlarms(pending) {
 function handleSwMessage(event) {
   const { type, alarm, reminder, amount } = event.data || {};
 
-  // SW is telling the open tab to play tablet alarm sound RIGHT NOW
+  // SW is telling the open tab to play tablet alarm sound
   if (type === 'PLAY_ALARM_SOUND' && alarm) {
     if (_soundCallbacks.playTabletAlarm) {
       _soundCallbacks.playTabletAlarm(alarm);
     }
     window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: alarm }));
 
-    // Update localStorage so in-app checker doesn't re-fire
     try {
       const todayStr = new Date().toISOString().split('T')[0];
-      const alarms   = JSON.parse(localStorage.getItem('medivault_alarms') || '[]');
+      const userId   = getActiveUserId();
+      const alarmKey = userId ? `medivault_alarms_${userId}` : 'medivault_alarms';
+      const alarms   = JSON.parse(localStorage.getItem(alarmKey) || '[]');
       const updated  = alarms.map((a) =>
         a.id === alarm.id ? { ...a, lastTriggered: todayStr } : a
       );
-      localStorage.setItem('medivault_alarms', JSON.stringify(updated));
+      localStorage.setItem(alarmKey, JSON.stringify(updated));
     } catch (_) {}
   }
 
-  // SW is telling the open tab to play water sound RIGHT NOW
+  // SW is telling the open tab to play water sound
   if (type === 'PLAY_WATER_SOUND' && reminder) {
     if (_soundCallbacks.playWaterSound) {
       _soundCallbacks.playWaterSound(reminder);
     }
     window.dispatchEvent(new CustomEvent('medivault_sw_water', { detail: reminder }));
 
-    // Update localStorage
     try {
       const todayStr = new Date().toISOString().split('T')[0];
       const userId   = getActiveUserId();
@@ -210,13 +200,12 @@ function handleSwMessage(event) {
     } catch (_) {}
   }
 
-  // User navigated from notification click
+  // Navigation from notification click
   if (type === 'NAVIGATE' && event.data.url) {
-    // Let the router handle navigation via custom event
     window.dispatchEvent(new CustomEvent('medivault_navigate', { detail: event.data.url }));
   }
 
-  // SW says: quick-log 250ml water from notification action button
+  // Quick-log water from notification action
   if (type === 'QUICK_LOG_WATER') {
     try {
       const userId   = getActiveUserId();
@@ -235,6 +224,7 @@ function handleSwMessage(event) {
       store[todayKey].total = (store[todayKey].total || 0) + (amount || 250);
       localStorage.setItem(storeKey, JSON.stringify(store));
       window.dispatchEvent(new CustomEvent('medivault_water_logged', { detail: entry }));
+      window.dispatchEvent(new CustomEvent('medivault_water_updated'));
     } catch (_) {}
   }
 }
@@ -246,7 +236,6 @@ async function getController() {
   if (!('serviceWorker' in navigator)) return null;
   if (navigator.serviceWorker.controller) return navigator.serviceWorker.controller;
 
-  // Wait up to 4 seconds for controller to be set
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), 4000);
     navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -270,36 +259,45 @@ async function sendToSW(message) {
 ───────────────────────────────────────────────────────────── */
 
 /**
- * Sync tablet alarms to SW (and its IndexedDB) for background checking.
- * Call whenever alarms are added, edited, toggled, or deleted.
+ * Sync tablet alarms to SW with user UID isolation
  */
-export async function syncTabletAlarmsToSW(alarms) {
-  await sendToSW({ type: 'SYNC_TABLET_ALARMS', payload: alarms });
+export async function syncTabletAlarmsToSW(alarms, userId = '') {
+  const uid = userId || getActiveUserId();
+  await sendToSW({ type: 'SYNC_TABLET_ALARMS', payload: alarms, userId: uid });
 }
 
 /**
- * Sync water reminders to SW for background checking.
+ * Sync water reminders to SW with user UID isolation
  */
-export async function syncWaterRemindersToSW(reminders, enabled) {
+export async function syncWaterRemindersToSW(reminders, enabled, userId = '') {
+  const uid = userId || getActiveUserId();
   await sendToSW({
     type: 'SYNC_WATER_REMINDERS',
     payload: { reminders, enabled },
+    userId: uid,
   });
 }
 
 /**
- * Request notification permission.
- * Returns 'granted' | 'denied' | 'default'
+ * Clear alarms from SW on user logout
+ */
+export async function clearUserAlarmsFromSW() {
+  await sendToSW({ type: 'CLEAR_USER_ALARMS' });
+}
+
+/**
+ * Request notification permission from user
  */
 export async function requestNotificationPermission() {
   if (!('Notification' in window)) return 'denied';
   if (Notification.permission === 'granted') return 'granted';
-  return await Notification.requestPermission();
+  try {
+    return await Notification.requestPermission();
+  } catch {
+    return 'denied';
+  }
 }
 
-/**
- * Check if this browser supports background notifications.
- */
 export function isBackgroundNotificationSupported() {
   return 'serviceWorker' in navigator && 'Notification' in window;
 }

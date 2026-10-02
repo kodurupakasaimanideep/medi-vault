@@ -5,6 +5,7 @@ import { syncWaterRemindersToSW, requestNotificationPermission, registerSoundCal
 import { syncRemindersToFirestore } from '../services/notificationManager';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import { recordDailyActivity } from '../utils/streakHelper';
 
 const JUICE_TRANSLATIONS = {
   en: {
@@ -996,12 +997,13 @@ export default function DrinkingWater({ user }) {
     saveStore(store, user);
     window.dispatchEvent(new CustomEvent('medivault_water_updated'));
     // Sync water reminders to service worker for background notifications
-    syncWaterRemindersToSW(reminders, remindersOn);
+    const uid = user?.id || user?.uid || '';
+    syncWaterRemindersToSW(reminders, remindersOn, uid);
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'water', reminders, remindersOn);
     }
-  }, [target, todayLogs, history, reminders, remindersOn, user?.uid]);
+  }, [target, todayLogs, history, reminders, remindersOn, user?.id, user?.uid]);
 
   /* ── SYNC HISTORY ── */
   useEffect(() => {
@@ -1194,6 +1196,7 @@ export default function DrinkingWater({ user }) {
     setTodayLogs(prev => [...prev, entry]);
     setAnimateAdd(true);
     playWaterSound();
+    recordDailyActivity(user, 'water');
     setTimeout(() => setAnimateAdd(false), 700);
   }
 
