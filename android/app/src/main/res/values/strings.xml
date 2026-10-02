@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Medivault</string>
+    <string name="title_activity_main">Medivault</string>
+    <string name="package_name">com.medivault.app</string>
+    <string name="custom_url_scheme">com.medivault.app</string>
+</resources>

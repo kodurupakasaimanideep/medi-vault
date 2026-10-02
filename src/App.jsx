@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Swal from 'sweetalert2';
@@ -7,8 +7,10 @@ import { getIdealSleepRange } from './utils/sleepHelper';
 import ProtectedRoute from './contexts/ProtectedRoute';
 import { initFirebaseSync, stopFirebaseSync, clearLocalAppData } from './services/firebaseSync';
 import { clearUserAlarmsFromSW } from './services/swManager';
+import { isNativeApp, syncNativeUserReminders, cancelAllNativeNotifications } from './services/nativeNotificationService';
 import { LanguageProvider } from './contexts/LanguageContext';
 import PersonalDetailsModal from './components/PersonalDetailsModal';
+
 
 // Pages
 import Login from './pages/Login';
@@ -48,6 +50,19 @@ import NotificationPrompt from './components/NotificationPrompt';
 function AppShell({ theme, toggleTheme }) {
   const { currentUser, userProfile, logout, isAuthenticated } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // ── Listen for notification click navigation (both Web SW & Android Local Notifications) ──
+  useEffect(() => {
+    const handleNav = (e) => {
+      if (e.detail) {
+        navigate(e.detail);
+      }
+    };
+    window.addEventListener('medivault_navigate', handleNav);
+    return () => window.removeEventListener('medivault_navigate', handleNav);
+  }, [navigate]);
+
 
   // ── Sleep Mode State ──────────────────────────────────────────────────────
   const [isSleepActive, setIsSleepActive] = useState(() => {
@@ -191,10 +206,13 @@ function AppShell({ theme, toggleTheme }) {
     role: userProfile?.role || 'user',
   } : null;
 
-  // Start/stop Firestore sync when auth state changes
+  // Start/stop Firestore sync and native scheduled alarms when auth state changes
   useEffect(() => {
     if (currentUser?.uid) {
       initFirebaseSync(currentUser.uid);
+      if (isNativeApp()) {
+        syncNativeUserReminders(currentUser.uid);
+      }
     } else {
       stopFirebaseSync();
     }
@@ -219,9 +237,13 @@ function AppShell({ theme, toggleTheme }) {
   const handleLogout = async () => {
     await stopFirebaseSync();
     await clearUserAlarmsFromSW();
+    if (isNativeApp()) {
+      await cancelAllNativeNotifications();
+    }
     clearLocalAppData(); // Remove all app keys from localStorage for privacy
     await logout();
   };
+
 
   // Routes that use the sidebar layout
   const sidebarRoutes = [

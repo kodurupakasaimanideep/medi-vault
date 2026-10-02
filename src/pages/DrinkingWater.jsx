@@ -3,7 +3,9 @@ import { Droplets, Plus, Bell, BellOff, Target, Clock, Calculator, History, BarC
 import './DrinkingWater.css';
 import { syncWaterRemindersToSW, requestNotificationPermission, registerSoundCallback } from '../services/swManager';
 import { syncRemindersToFirestore } from '../services/notificationManager';
+import { scheduleNativeWaterReminders, requestNativePermissions, isNativeApp } from '../services/nativeNotificationService';
 import SectionAbout from '../components/SectionAbout';
+
 import { useLanguage } from '../contexts/LanguageContext';
 import { recordDailyActivity } from '../utils/streakHelper';
 
@@ -996,9 +998,13 @@ export default function DrinkingWater({ user }) {
     store.remindersOn = remindersOn;
     saveStore(store, user);
     window.dispatchEvent(new CustomEvent('medivault_water_updated'));
-    // Sync water reminders to service worker for background notifications
+    // Sync water reminders to service worker for web background notifications
     const uid = user?.id || user?.uid || '';
     syncWaterRemindersToSW(reminders, remindersOn, uid);
+    // Schedule native Android water reminders when running in Capacitor app
+    if (isNativeApp()) {
+      scheduleNativeWaterReminders(reminders, remindersOn, uid);
+    }
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'water', reminders, remindersOn);
@@ -1015,10 +1021,11 @@ export default function DrinkingWater({ user }) {
 
   /* ── NOTIFICATION PERMISSION ── */
   async function requestNotifPermission() {
-    const perm = await requestNotificationPermission();
+    const perm = isNativeApp() ? await requestNativePermissions() : await requestNotificationPermission();
     setNotifPermission(perm);
     return perm;
   }
+
 
   /* ── PLAY WATER SOUND (2-second realistic water pour/splash) ── */
   function playWaterSound() {

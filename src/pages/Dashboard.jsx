@@ -915,42 +915,104 @@ export default function Dashboard({ user }) {
           </div>
 
           {/* Overall Performance */}
-          <div className="dash-card dash-card--performance" style={{ display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg, var(--surface), rgba(236, 72, 153, 0.05))', borderTop: '4px solid #ec4899' }}>
-            <div className="dash-card-header" style={{ justifyContent: 'center', marginBottom: 0 }}>
-              <span className="dash-card-title">{ct('weeklyPerformance')}</span>
-            </div>
-            
-            <div style={{ textAlign: 'center', marginBottom: '1rem', marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Flame size={28} style={{ color: '#f97316', filter: 'drop-shadow(0 0 8px rgba(249,115,22,0.5))' }} />
-                <div style={{ fontSize: '2.2rem', fontWeight: '900', color: 'var(--text-main)', lineHeight: '1' }}>{yogaStreaks}</div>
-              </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '4px', fontWeight: 'bold' }}>{ct('daysStreak')} 🔥</div>
-              {/* Streak dots */}
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '8px' }}>
-                {getRecentStreakDays(user, 7).map((d, i) => (
-                  <div key={i} title={`${d.dayName}: ${d.isCompleted ? 'Completed 🔥' : 'No Activity'}`} style={{
-                    width: '10px', height: '10px', borderRadius: '50%',
-                    background: d.isCompleted ? 'linear-gradient(135deg, #f97316, #ef4444)' : 'var(--border)',
-                    boxShadow: d.isCompleted ? '0 0 6px rgba(249,115,22,0.6)' : 'none',
-                    border: d.isToday ? '1px solid #f97316' : 'none'
-                  }} />
-                ))}
-              </div>
-            </div>
+          {(() => {
+            const weeklyData = getWeeklyPerformanceData();
+            const totalVal = weeklyData.reduce((acc, curr) => acc + curr.val, 0);
+            const avgVal = Math.round(totalVal / (weeklyData.length || 7));
+            const activeDaysCount = weeklyData.filter(d => d.val > 0).length;
+            const bestDay = weeklyData.reduce((max, curr) => curr.val > max.val ? curr : max, { day: 'Mon', val: 0 });
 
-            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '6px' }}>
-              {getWeeklyPerformanceData().map((item, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, gap: '4px' }}>
-                  <span style={{ fontSize: '0.6rem', color: item.col, fontWeight: '800' }}>{item.val}%</span>
-                  <div style={{ width: '100%', height: '80px', background: 'var(--bg-color)', borderRadius: '6px', display: 'flex', alignItems: 'flex-end', overflow: 'hidden', position: 'relative' }}>
-                    <div style={{ width: '100%', height: `${item.val}%`, background: `linear-gradient(180deg, ${item.col}, ${item.col}66)`, borderRadius: '4px 4px 0 0', transition: 'height 0.6s ease', boxShadow: `0 0 8px ${item.col}55` }} />
+            return (
+              <div className="dash-card dash-card--performance">
+                <div className="dash-card-header">
+                  <div className="dash-card-title-group">
+                    <span className="dash-card-title">{ct('weeklyPerformance')}</span>
+                    <span className="dash-perf-badge">{activeDaysCount > 0 ? `${activeDaysCount}/7 Active` : '7-Day Activity'}</span>
                   </div>
-                  <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>{item.day}</span>
                 </div>
-              ))}
-            </div>
-          </div>
+
+                {/* Hero Stats Row */}
+                <div className="dash-perf-hero-grid">
+                  <div className="dash-perf-hero-card">
+                    <div className="dash-perf-hero-top">
+                      <Flame size={22} className="dash-perf-flame-icon" />
+                      <span className="dash-perf-hero-num">{yogaStreaks}</span>
+                    </div>
+                    <span className="dash-perf-hero-label">{ct('daysStreak')} 🔥</span>
+                    <div className="dash-perf-streak-dots">
+                      {getRecentStreakDays(user, 7).map((d, i) => (
+                        <div 
+                          key={i} 
+                          title={`${d.dayName}: ${d.isCompleted ? 'Completed 🔥' : 'No Activity'}`} 
+                          className={`dash-perf-dot ${d.isCompleted ? 'active' : ''} ${d.isToday ? 'today' : ''}`} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="dash-perf-hero-card">
+                    <div className="dash-perf-hero-top">
+                      <Activity size={20} style={{ color: '#0ea5e9' }} />
+                      <span className="dash-perf-hero-num">{avgVal}%</span>
+                    </div>
+                    <span className="dash-perf-hero-label">Weekly Average</span>
+                    <div className="dash-perf-mini-bar">
+                      <div className="dash-perf-mini-fill" style={{ width: `${avgVal}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Micro Metric Highlights */}
+                <div className="dash-perf-metrics-strip">
+                  <div className="dash-perf-metric-pill">
+                    <span className="dash-perf-metric-k">Peak Day</span>
+                    <span className="dash-perf-metric-v" style={{ color: bestDay.val > 0 ? '#10b981' : 'var(--text-muted)' }}>
+                      {bestDay.val > 0 ? `${bestDay.day} (${bestDay.val}%)` : '—'}
+                    </span>
+                  </div>
+                  <div className="dash-perf-metric-pill">
+                    <span className="dash-perf-metric-k">Consistency</span>
+                    <span className="dash-perf-metric-v" style={{ color: activeDaysCount >= 5 ? '#10b981' : activeDaysCount >= 2 ? '#f59e0b' : '#64748b' }}>
+                      {activeDaysCount >= 5 ? 'High' : activeDaysCount >= 2 ? 'Moderate' : 'Starting'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Main Interactive Bar Chart Area */}
+                <div className="dash-perf-chart-box">
+                  <div className="dash-perf-chart-guides">
+                    <div className="dash-perf-guide-line top"><span>100% Target</span></div>
+                    <div className="dash-perf-guide-line mid"><span>50%</span></div>
+                  </div>
+                  <div className="dash-perf-bars-row">
+                    {weeklyData.map((item, i) => (
+                      <div key={i} className="dash-perf-bar-col" title={`${item.day}: ${item.val}%`}>
+                        <span className="dash-perf-bar-val" style={{ color: item.col }}>{item.val}%</span>
+                        <div className="dash-perf-bar-track">
+                          <div 
+                            className="dash-perf-bar-fill" 
+                            style={{ 
+                              height: `${Math.max(item.val, item.val > 0 ? 8 : 4)}%`, 
+                              background: item.val > 0 
+                                ? `linear-gradient(180deg, ${item.col}, ${item.col}88)` 
+                                : 'rgba(255,255,255,0.06)',
+                              boxShadow: item.val > 0 ? `0 0 10px ${item.col}44` : 'none'
+                            }} 
+                          />
+                        </div>
+                        <span className="dash-perf-bar-day">{item.day}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Insight footer pill */}
+                <div className="dash-perf-footer-note">
+                  <span>{yogaStreaks > 0 ? '✨ Excellent momentum! Keep logging daily hydration & workouts.' : '💧 Log daily water & health routines to fill your weekly activity.'}</span>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Clinical Notes */}
           <div className="dash-card" style={{ background: 'linear-gradient(145deg, var(--surface), rgba(16, 185, 129, 0.05))', borderTop: '4px solid #10b981' }}>

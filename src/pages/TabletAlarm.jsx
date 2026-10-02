@@ -4,7 +4,9 @@ import Swal from 'sweetalert2';
 import { ALARM_SOUNDS } from '../components/AlarmManager';
 import { syncTabletAlarmsToSW, requestNotificationPermission } from '../services/swManager';
 import { syncRemindersToFirestore } from '../services/notificationManager';
+import { scheduleNativeTabletAlarms, requestNativePermissions, isNativeApp } from '../services/nativeNotificationService';
 import SectionAbout from '../components/SectionAbout';
+
 import { useLanguage } from '../contexts/LanguageContext';
 
 const hexToRgb = (hex) => {
@@ -350,14 +352,25 @@ export default function TabletAlarm({ user }) {
       localStorage.setItem(userAlarmKey, JSON.stringify(initialAlarms));
       localStorage.setItem('medivault_alarms', JSON.stringify(initialAlarms));
     }
-    // Sync to SW immediately so background notifications are ready
+    // Sync to SW immediately so background notifications are ready on web
     syncTabletAlarmsToSW(initialAlarms, uid);
+    // Sync to Native Android Local Notifications if running as app
+    if (isNativeApp()) {
+      scheduleNativeTabletAlarms(initialAlarms, uid);
+      requestNativePermissions().then(perm => {
+        if (perm) setNotifPermission(perm);
+      });
+    } else {
+      // Ensure notification permission is granted on web
+      requestNotificationPermission().then(perm => {
+        if (perm) setNotifPermission(perm);
+      });
+    }
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'tablet', initialAlarms);
     }
-    // Ensure notification permission is granted
-    requestNotificationPermission();
+
 
     // Load custom voices
     const savedVoices = localStorage.getItem(`medivault_human_voices_${uid}`) || localStorage.getItem('medivault_human_voices');
@@ -410,13 +423,18 @@ export default function TabletAlarm({ user }) {
     setAlarms(updated);
     localStorage.setItem(`medivault_alarms_${uid}`, JSON.stringify(updated));
     localStorage.setItem('medivault_alarms', JSON.stringify(updated));
-    // Push updated alarms to service worker for background notifications
+    // Push updated alarms to service worker for web background notifications
     syncTabletAlarmsToSW(updated, uid);
+    // Schedule native Android alarms when running in Capacitor app
+    if (isNativeApp()) {
+      scheduleNativeTabletAlarms(updated, uid);
+    }
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'tablet', updated);
     }
   };
+
 
   // ── Preview a sound using the same Peaceful synthesis
   const playPreviewSound = (soundType, vol = 1.0) => {
@@ -680,8 +698,13 @@ export default function TabletAlarm({ user }) {
           </div>
           <button
             onClick={async () => {
-              const perm = await requestNotificationPermission();
-              setNotifPermission(perm);
+              if (isNativeApp()) {
+                const perm = await requestNativePermissions();
+                setNotifPermission(perm);
+              } else {
+                const perm = await requestNotificationPermission();
+                setNotifPermission(perm);
+              }
             }}
             style={{
               background: '#f59e0b', color: 'white', border: 'none',
@@ -691,6 +714,7 @@ export default function TabletAlarm({ user }) {
           >
             {ct('allowNotif')}
           </button>
+
         </div>
       )}
       {notifPermission === 'granted' && (
