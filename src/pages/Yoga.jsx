@@ -532,7 +532,7 @@ const LEVELS = {
   }
 };
 
-export default function Yoga() {
+export default function Yoga({ user }) {
   const { lang } = useLanguage();
   const yt = (key) => YOGA_T[lang]?.[key] || YOGA_T['en']?.[key] || key;
   const transTitle = (t) => YOGA_TITLES_T[lang]?.[t] || YOGA_TITLES_T['en']?.[t] || t;
