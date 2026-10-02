@@ -13,7 +13,7 @@
    5. Instant Sound Playback: When user taps notification or opens app, plays rich audio alarm.
 ═══════════════════════════════════════════════════════════════════ */
 
-const SW_VERSION = 'medivault-sw-v7';
+const SW_VERSION = 'medivault-sw-v8';
 const DB_NAME    = 'medivault-sw-db';
 const DB_VERSION = 2;
 
@@ -432,12 +432,35 @@ self.addEventListener('notificationclick', (event) => {
   if (action === 'taken' || action === 'dismiss') {
     event.waitUntil(
       (async () => {
+        // 1. Close this and all matching notifications
+        try {
+          event.notification.close();
+          const notifs = await self.registration.getNotifications();
+          notifs.forEach((n) => {
+            if (!data.alarmId || n.data?.alarmId === data.alarmId || n.tag?.includes('tablet-alarm') || n.title?.includes('Medicine')) {
+              n.close();
+            }
+          });
+        } catch (_) {}
+
+        // 2. Mark alarm as triggered today in SW config so it cannot refire
+        const todayStr = new Date().toISOString().split('T')[0];
         if (data.type === 'tablet' && data.alarmId) {
-          await dbDelete('pending', `tablet-${data.alarmId}-${new Date().toISOString().split('T')[0]}`);
+          await dbDelete('pending', `tablet-${data.alarmId}-${todayStr}`);
+          tabletAlarms = tabletAlarms.map((a) =>
+            a.id === data.alarmId ? { ...a, lastTriggered: todayStr } : a
+          );
+          await dbSet('config', 'tabletAlarms', tabletAlarms);
         }
         if (data.type === 'water' && data.reminderId) {
-          await dbDelete('pending', `water-${data.reminderId}-${new Date().toISOString().split('T')[0]}`);
+          await dbDelete('pending', `water-${data.reminderId}-${todayStr}`);
+          waterReminders = waterReminders.map((wr) =>
+            wr.id === data.reminderId ? { ...wr, lastTriggered: todayStr } : wr
+          );
+          await dbSet('config', 'waterReminders', waterReminders);
         }
+
+        // 3. Notify all open client tabs to immediately silence sound & dismiss modal
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         clients.forEach((c) => {
           c.postMessage({ type: 'DISMISS_ALARM', alarmId: data.alarmId });
