@@ -642,9 +642,12 @@ export default function Dashboard({ user }) {
   ];
 
   // Build human-friendly display name: prefer PatientInfo fullName, then personal details, then formatHumanDisplayName
-  const patientName = patientData?.fullName ||
+  const rawPatientName = patientData?.fullName ||
     (personalDetails ? (personalDetails.fullName || `${personalDetails.firstName || ''} ${personalDetails.lastName || ''}`.trim()) : null) ||
     formatHumanDisplayName(user);
+  const patientName = rawPatientName
+    ? rawPatientName.split(' ').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : 'Patient';
 
   // Build first / last name chips from personal details
   const pdFirstName = personalDetails?.firstName || '';

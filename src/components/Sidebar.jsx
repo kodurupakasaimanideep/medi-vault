@@ -40,9 +40,10 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
       const pdRaw = localStorage.getItem(`medivault_personal_details_${user.id}`);
       const pd = pdRaw ? JSON.parse(pdRaw) : null;
       if (pd?.fullName) {
-        setDisplayName(pd.fullName);
+        setDisplayName(pd.fullName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
       } else if (pd?.firstName) {
-        setDisplayName(`${pd.firstName} ${pd.lastName || ''}`.trim());
+        const full = `${pd.firstName} ${pd.lastName || ''}`.trim();
+        setDisplayName(full.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
       } else {
         setDisplayName(formatHumanDisplayName(user));
       }
@@ -182,10 +183,12 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
           </div>
           <div className="sidebar-patient-info">
             <div className="sidebar-patient-name" title={displayName || user.username}>{displayName || user.username}</div>
-            <div className="sidebar-patient-id" title={user.id ? `Full ID: ${user.id}` : undefined}>#MV-{getShortPatientId(user.id)}</div>
-          </div>
-          <div className={`sidebar-patient-badge ${isDoctor ? 'sidebar-patient-badge--doctor' : ''}`}>
-            {isDoctor ? 'DOCTOR' : 'ACTIVE'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+              <div className="sidebar-patient-id" title={user.id ? `Full ID: ${user.id}` : undefined}>#MV-{getShortPatientId(user.id)}</div>
+              <div className={`sidebar-patient-badge ${isDoctor ? 'sidebar-patient-badge--doctor' : ''}`}>
+                {isDoctor ? 'DOCTOR' : 'ACTIVE'}
+              </div>
+            </div>
           </div>
         </div>
       )}
