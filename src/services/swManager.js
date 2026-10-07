@@ -15,6 +15,7 @@ let keepAlivePinger = null;
 // Callbacks registered by AlarmManager / DrinkingWater to handle sounds
 const _soundCallbacks = {
   playTabletAlarm: null,   // (alarm) => void
+  stopTabletAlarm: null,   // (alarmId) => void
   playWaterSound:  null,   // (reminder) => void
 };
 
@@ -144,15 +145,17 @@ function handlePendingAlarms(pending) {
     if (item.type === 'tablet' && item.alarm) {
       if (_soundCallbacks.playTabletAlarm) {
         _soundCallbacks.playTabletAlarm(item.alarm);
+      } else {
+        window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: item.alarm }));
       }
-      window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: item.alarm }));
     }
 
     if (item.type === 'water' && item.reminder) {
       if (_soundCallbacks.playWaterSound) {
         _soundCallbacks.playWaterSound(item.reminder);
+      } else {
+        window.dispatchEvent(new CustomEvent('medivault_sw_water', { detail: item.reminder }));
       }
-      window.dispatchEvent(new CustomEvent('medivault_sw_water', { detail: item.reminder }));
     }
 
     sendToSW({ type: 'CLEAR_PENDING', payload: { key: item.key } });
@@ -163,14 +166,23 @@ function handlePendingAlarms(pending) {
    Handle messages sent from SW to the page
 ───────────────────────────────────────────────────────────── */
 function handleSwMessage(event) {
-  const { type, alarm, reminder, amount } = event.data || {};
+  const { type, alarm, reminder, amount, alarmId } = event.data || {};
+
+  // SW is telling the open tab to stop tablet alarm sound & dismiss modal
+  if (type === 'STOP_ALARM_SOUND') {
+    if (_soundCallbacks.stopTabletAlarm) {
+      _soundCallbacks.stopTabletAlarm(alarmId);
+    }
+    window.dispatchEvent(new CustomEvent('medivault_stop_alarm', { detail: { alarmId } }));
+  }
 
   // SW is telling the open tab to play tablet alarm sound
   if (type === 'PLAY_ALARM_SOUND' && alarm) {
     if (_soundCallbacks.playTabletAlarm) {
       _soundCallbacks.playTabletAlarm(alarm);
+    } else {
+      window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: alarm }));
     }
-    window.dispatchEvent(new CustomEvent('medivault_sw_alarm', { detail: alarm }));
 
     try {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -208,12 +220,6 @@ function handleSwMessage(event) {
   // Navigation from notification click
   if (type === 'NAVIGATE' && event.data.url) {
     window.dispatchEvent(new CustomEvent('medivault_navigate', { detail: event.data.url }));
-  }
-
-  // SW is telling client tab that alarm was dismissed/taken from notification
-  if (type === 'DISMISS_ALARM') {
-    window.dispatchEvent(new CustomEvent('medivault_dismiss_alarm', { detail: { alarmId: event.data?.alarmId } }));
-    window.dispatchEvent(new CustomEvent('medivault_stop_all_audio'));
   }
 
   // Quick-log water from notification action
@@ -297,6 +303,16 @@ export async function clearUserAlarmsFromSW() {
 }
 
 /**
+ * Dismiss active tablet alarm in SW (clears pending DB & removes OS notifications)
+ */
+export async function dismissAlarmInSW(alarmId, todayStr) {
+  return sendToSW({
+    type: 'DISMISS_ALARM',
+    payload: { alarmId, todayStr: todayStr || new Date().toISOString().split('T')[0] }
+  });
+}
+
+/**
  * Request notification permission from user
  */
 export async function requestNotificationPermission() {
@@ -306,25 +322,6 @@ export async function requestNotificationPermission() {
     return await Notification.requestPermission();
   } catch {
     return 'denied';
-  }
-}
-
-/**
- * Close and clear all alarm system notifications (mobile shade & desktop center)
- */
-export async function closeAllAlarmNotifications(alarmId = '') {
-  await sendToSW({ type: 'CLOSE_ALARM_NOTIFICATIONS', payload: { alarmId } });
-
-  if ('serviceWorker' in navigator) {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const notifications = await reg.getNotifications();
-      notifications.forEach((n) => {
-        if (!alarmId || n.data?.alarmId === alarmId || n.tag?.includes('tablet-alarm') || n.title?.includes('Medicine')) {
-          n.close();
-        }
-      });
-    } catch (_) {}
   }
 }
 

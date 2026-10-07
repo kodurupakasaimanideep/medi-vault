@@ -76,6 +76,11 @@ export async function initNativeNotifications() {
           id: 'MEDIVAULT_TABLET_ACTIONS',
           actions: [
             {
+              id: 'dismiss',
+              title: '✕ Dismiss Alarm',
+              foreground: false
+            },
+            {
               id: 'take',
               title: '💊 Take Medicine',
               foreground: false
@@ -137,6 +142,14 @@ export async function initNativeNotifications() {
     // 5. Listen for delivered notifications
     LocalNotifications.addListener('localNotificationReceived', (notification) => {
       console.log('[NativeNotif] Notification received / delivered on Android:', notification);
+      // Auto-dismiss tablet notification on Android after 1 minute (60 seconds)
+      setTimeout(async () => {
+        try {
+          if (notification?.id) {
+            await LocalNotifications.removeDeliveredNotifications({ notifications: [{ id: notification.id }] });
+          }
+        } catch (_) {}
+      }, 60000);
     });
 
     isInitialized = true;
@@ -156,7 +169,12 @@ function handleNotificationAction(event) {
   const extra = notification?.extra || {};
   const notifType = extra.type; // 'tablet' | 'water' | 'snooze'
 
-  console.log(`[NativeNotif] Processing action "${actionId}" for type "${notifType}"`);
+  // ── DISMISS / TAKE MEDICINE ──
+  if (actionId === 'dismiss' || actionId === 'take') {
+    dismissNativeTabletAlarm(extra.alarmId);
+    window.dispatchEvent(new CustomEvent('medivault_stop_alarm', { detail: { alarmId: extra.alarmId } }));
+    return;
+  }
 
   // ── SNOOZE 5 MINUTES ──
   if (actionId === 'snooze_5') {
@@ -386,15 +404,24 @@ export async function cancelAllNativeNotifications() {
 }
 
 /**
- * Clear all delivered notifications from Android notification shade
+ * Dismiss active / delivered native notifications and one-off snooze for a tablet
  */
-export async function dismissNativeDeliveredNotifications() {
+export async function dismissNativeTabletAlarm(alarmId) {
   if (!isNativeApp()) return;
   try {
-    await LocalNotifications.removeAllDeliveredNotifications();
-    console.log('[NativeNotif] Cleared all delivered notifications from notification tray');
+    if (LocalNotifications.removeAllDeliveredNotifications) {
+      await LocalNotifications.removeAllDeliveredNotifications();
+    }
+    const pending = await LocalNotifications.getPending();
+    const toCancel = pending.notifications
+      .filter(n => n.extra?.type === 'snooze' || (alarmId && n.extra?.alarmId === alarmId && n.schedule?.at))
+      .map(n => ({ id: n.id }));
+    if (toCancel.length > 0) {
+      await LocalNotifications.cancel({ notifications: toCancel });
+    }
+    console.log(`[NativeNotif] Dismissed native notifications for alarm ${alarmId}`);
   } catch (err) {
-    console.error('[NativeNotif] Error clearing delivered notifications:', err);
+    console.error('[NativeNotif] Error dismissing native alarm:', err);
   }
 }
 

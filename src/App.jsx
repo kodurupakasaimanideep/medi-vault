@@ -2,7 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Swal from 'sweetalert2';
-import { Moon } from 'lucide-react';
+import { Moon, Shield, Stethoscope } from 'lucide-react';
 import { getIdealSleepRange } from './utils/sleepHelper';
 import ProtectedRoute from './contexts/ProtectedRoute';
 import { initFirebaseSync, stopFirebaseSync, clearLocalAppData } from './services/firebaseSync';
@@ -10,6 +10,8 @@ import { clearUserAlarmsFromSW } from './services/swManager';
 import { isNativeApp, syncNativeUserReminders, cancelAllNativeNotifications } from './services/nativeNotificationService';
 import { LanguageProvider } from './contexts/LanguageContext';
 import PersonalDetailsModal from './components/PersonalDetailsModal';
+import PatientLoginModal from './components/PatientLoginModal';
+import { getUsers, getShortPatientId } from './utils/localAuth';
 
 
 // Pages
@@ -48,7 +50,7 @@ import NotificationPrompt from './components/NotificationPrompt';
 // Inner app shell — knows about routes and auth state
 // ─────────────────────────────────────────────────────────────────────────────
 function AppShell({ theme, toggleTheme }) {
-  const { currentUser, userProfile, logout, isAuthenticated } = useAuth();
+  const { currentUser, userProfile, logout, isAuthenticated, isDoctor } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -200,11 +202,69 @@ function AppShell({ theme, toggleTheme }) {
   const user = currentUser ? {
     id: currentUser.uid,
     uid: currentUser.uid,
-    username: userProfile?.username || currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+    username: userProfile?.username || currentUser.username || currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
     displayName: userProfile?.displayName || currentUser.displayName || 'User',
     email: currentUser.email,
-    role: userProfile?.role || 'user',
+    role: isDoctor ? 'doctor' : (userProfile?.role || currentUser.role || 'user'),
+    isDoctor: Boolean(isDoctor),
   } : null;
+
+  // Active consulting patient state for doctor access
+  const [showGlobalLoginModal, setShowGlobalLoginModal] = useState(false);
+  const [activePatientUid, setActivePatientUid] = useState(() => {
+    return sessionStorage.getItem('consult_active_patient_uid') || localStorage.getItem('consult_active_patient_uid') || null;
+  });
+
+  useEffect(() => {
+    const handlePatientChange = (e) => {
+      const uid = e?.detail?.uid || sessionStorage.getItem('consult_active_patient_uid') || localStorage.getItem('consult_active_patient_uid') || null;
+      setActivePatientUid(uid);
+    };
+    const handleOpenModal = () => setShowGlobalLoginModal(true);
+    window.addEventListener('medivault_active_patient_changed', handlePatientChange);
+    window.addEventListener('storage', handlePatientChange);
+    window.addEventListener('medivault_open_patient_login_modal', handleOpenModal);
+    return () => {
+      window.removeEventListener('medivault_active_patient_changed', handlePatientChange);
+      window.removeEventListener('storage', handlePatientChange);
+      window.removeEventListener('medivault_open_patient_login_modal', handleOpenModal);
+    };
+  }, []);
+
+  const effectivePatientUser = (() => {
+    if (!isDoctor) return user;
+    const all = getUsers();
+    const targetUid = activePatientUid || (() => {
+      const pList = all.filter(u => u.role !== 'doctor' && !(u.username && u.username.toLowerCase().startsWith('dr')));
+      return pList.length > 0 ? (pList[0].uid || pList[0].id) : null;
+    })();
+
+    if (!targetUid) return null;
+    const found = all.find(u => (u.uid || u.id) === targetUid);
+    let pName = found?.displayName || found?.username || 'Patient';
+    try {
+      const pdRaw = localStorage.getItem(`medivault_personal_details_${targetUid}`);
+      if (pdRaw) {
+        const pd = JSON.parse(pdRaw);
+        if (pd.fullName) pName = pd.fullName;
+        else if (pd.firstName) pName = `${pd.firstName} ${pd.lastName || ''}`.trim();
+      }
+    } catch {}
+
+    return {
+      id: targetUid,
+      uid: targetUid,
+      username: found?.username || `patient_${getShortPatientId(targetUid).toLowerCase()}`,
+      displayName: pName,
+      role: 'patient',
+      isDoctor: false,
+      shortId: `#MV-${getShortPatientId(targetUid)}`,
+      doctorUser: user,
+      isDoctorViewing: true
+    };
+  })();
+
+  const pageUser = (isDoctor && effectivePatientUser) ? effectivePatientUser : user;
 
   // Start/stop Firestore sync and native scheduled alarms when auth state changes
   useEffect(() => {
@@ -218,9 +278,13 @@ function AppShell({ theme, toggleTheme }) {
     }
   }, [currentUser]);
 
-  // ── Show personal details modal if not yet saved for this user ────────────
+  // ── Show personal details modal if not yet saved for this user (skip for doctors) ─
   useEffect(() => {
     if (currentUser?.uid) {
+      if (currentUser.role === 'doctor' || userProfile?.role === 'doctor') {
+        setShowPersonalModal(false);
+        return;
+      }
       const saved = localStorage.getItem(`medivault_personal_details_${currentUser.uid}`);
       if (!saved) {
         // Small delay so dashboard renders first
@@ -232,7 +296,7 @@ function AppShell({ theme, toggleTheme }) {
     } else {
       setShowPersonalModal(false);
     }
-  }, [currentUser]);
+  }, [currentUser, userProfile]);
 
   const handleLogout = async () => {
     await stopFirebaseSync();
@@ -331,27 +395,75 @@ function AppShell({ theme, toggleTheme }) {
             onComplete={() => setShowPersonalModal(false)}
           />
         )}
+          {/* Doctor Active Patient Banner (shown when doctor is navigating patient pages) */}
+          {isDoctor && location.pathname !== '/consultation' && location.pathname !== '/settings' && (
+            <div className="doctor-patient-top-bar">
+              <div className="dp-bar-left">
+                <span className="dp-doctor-pill">
+                  <Stethoscope size={14} /> Doctor Access
+                </span>
+                <span className="dp-divider">·</span>
+                <span className="dp-patient-text">
+                  Viewing Patient: <strong>{effectivePatientUser?.displayName || 'No Patient Selected'}</strong>
+                </span>
+                <span className="dp-patient-badge">
+                  <Shield size={12} /> {effectivePatientUser?.shortId || (effectivePatientUser?.id ? `#MV-${getShortPatientId(effectivePatientUser.id)}` : 'No ID')}
+                </span>
+              </div>
+              <div className="dp-bar-right">
+                <button
+                  type="button"
+                  className="dp-btn-action dp-btn-login"
+                  onClick={() => setShowGlobalLoginModal(true)}
+                  title="Click to open Patient Login modal"
+                >
+                  <Shield size={13} /> Patient Login
+                </button>
+                <button
+                  type="button"
+                  className="dp-btn-action dp-btn-consult"
+                  onClick={() => navigate('/consultation')}
+                  title="Go to Consultation"
+                >
+                  <Stethoscope size={13} /> Consultation
+                </button>
+              </div>
+            </div>
+          )}
+
           <Routes>
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
-            <Route path="/add-data" element={<ProtectedRoute><AddData user={user} /></ProtectedRoute>} />
-            <Route path="/patient-info" element={<ProtectedRoute><PatientInfo user={user} /></ProtectedRoute>} />
-            <Route path="/view-data" element={<ProtectedRoute><ViewData user={user} /></ProtectedRoute>} />
-            <Route path="/medical-slips" element={<ProtectedRoute><MedicalSlips user={user} /></ProtectedRoute>} />
-            <Route path="/tablets-info" element={<ProtectedRoute><TabletsInfo user={user} /></ProtectedRoute>} />
-            <Route path="/medical-diseases" element={<ProtectedRoute><MedicalDiseases user={user} /></ProtectedRoute>} />
-            <Route path="/diet-plan" element={<ProtectedRoute><DietPlan user={user} /></ProtectedRoute>} />
-            <Route path="/tablet-alarm" element={<ProtectedRoute><TabletAlarm user={user} /></ProtectedRoute>} />
-            <Route path="/drinking-water" element={<ProtectedRoute><DrinkingWater user={user} /></ProtectedRoute>} />
-            <Route path="/yoga" element={<ProtectedRoute><Yoga user={user} /></ProtectedRoute>} />
-            <Route path="/diet-timetable" element={<ProtectedRoute><DietTimetable user={user} /></ProtectedRoute>} />
-            <Route path="/calendar-view" element={<ProtectedRoute><CalendarView user={user} /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard user={pageUser} /></ProtectedRoute>} />
+            <Route path="/add-data" element={<ProtectedRoute><AddData user={pageUser} /></ProtectedRoute>} />
+            <Route path="/patient-info" element={<ProtectedRoute><PatientInfo user={pageUser} /></ProtectedRoute>} />
+            <Route path="/view-data" element={<ProtectedRoute><ViewData user={pageUser} /></ProtectedRoute>} />
+            <Route path="/medical-slips" element={<ProtectedRoute><MedicalSlips user={pageUser} /></ProtectedRoute>} />
+            <Route path="/tablets-info" element={<ProtectedRoute><TabletsInfo user={pageUser} /></ProtectedRoute>} />
+            <Route path="/medical-diseases" element={<ProtectedRoute><MedicalDiseases user={pageUser} /></ProtectedRoute>} />
+            <Route path="/diet-plan" element={<ProtectedRoute><DietPlan user={pageUser} /></ProtectedRoute>} />
+            <Route path="/tablet-alarm" element={<ProtectedRoute><TabletAlarm user={pageUser} /></ProtectedRoute>} />
+            <Route path="/drinking-water" element={<ProtectedRoute><DrinkingWater user={pageUser} /></ProtectedRoute>} />
+            <Route path="/yoga" element={<ProtectedRoute><Yoga user={pageUser} /></ProtectedRoute>} />
+            <Route path="/diet-timetable" element={<ProtectedRoute><DietTimetable user={pageUser} /></ProtectedRoute>} />
+            <Route path="/calendar-view" element={<ProtectedRoute><CalendarView user={pageUser} /></ProtectedRoute>} />
             <Route path="/consultation" element={<ProtectedRoute><Consultation user={user} /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><SettingsPage user={user} theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} /></ProtectedRoute>} />
-            <Route path="/temperature" element={<ProtectedRoute><TemperatureMonitor user={user} /></ProtectedRoute>} />
+            <Route path="/temperature" element={<ProtectedRoute><TemperatureMonitor user={pageUser} /></ProtectedRoute>} />
           </Routes>
         </div>
         <AlarmManager />
         <NotificationPrompt userId={user?.uid} />
+        {/* Global Patient Login Modal for Doctors */}
+        <PatientLoginModal
+          isOpen={showGlobalLoginModal}
+          onClose={() => setShowGlobalLoginModal(false)}
+          user={user}
+          onSuccess={(pProfile, dest) => {
+            setActivePatientUid(pProfile.id);
+            if (dest === 'dashboard') navigate('/dashboard');
+            else if (dest === 'patient-info') navigate('/patient-info');
+            else if (dest === 'consultation') navigate('/consultation');
+          }}
+        />
       </div>
     );
   }
@@ -373,7 +485,7 @@ function AppShell({ theme, toggleTheme }) {
         </Routes>
       </main>
       <Footer />
-      {isAuthenticated && <AlarmManager />}
+      <AlarmManager />
     </div>
   );
 }

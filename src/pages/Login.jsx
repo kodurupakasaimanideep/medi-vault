@@ -3,10 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Eye, EyeOff, AlertCircle, Mail, KeyRound, User, ArrowRight,
   ShieldCheck, Loader2, Activity, CheckCircle2, Copy, LogIn,
-  UserPlus, Lock, Sparkles
+  UserPlus, Lock, Sparkles, Stethoscope
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { initFirebaseSync } from '../services/firebaseSync';
+import Scanner from '../components/Scanner';
 
 /* ─── Password strength ─────────────────────────────────────── */
 const getPasswordStrength = (password) => {
@@ -85,19 +86,22 @@ function CredRow({ label, value, masked, show, onToggle }) {
    MAIN LOGIN PAGE
    ═══════════════════════════════════════════════════════════════ */
 export default function Login() {
-  const { login, signup, currentUser } = useAuth();
+  const { login, signup, doctorLogin, currentUser } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
   const from      = location.state?.from?.pathname || '/dashboard';
 
-  /* mode: 'login' | 'signup' | 'success' */
+  /* mode: 'login' | 'signup' | 'doctor' | 'success' */
   const [mode, setMode]                     = useState('login');
   const [email, setEmail]                   = useState('');
   const [password, setPassword]             = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName]       = useState('');
+  const [doctorUsername, setDoctorUsername] = useState('');
+  const [doctorPassword, setDoctorPassword] = useState('');
   const [showPassword, setShowPassword]     = useState(false);
   const [showConfirmPw, setShowConfirmPw]   = useState(false);
+  const [showDoctorPw, setShowDoctorPw]     = useState(false);
   const [showCredPw, setShowCredPw]         = useState(false);
   const [error, setError]                   = useState('');
   const [isLoading, setIsLoading]           = useState(false);
@@ -114,8 +118,9 @@ export default function Login() {
 
   const resetForm = () => {
     setEmail(''); setPassword(''); setConfirmPassword('');
-    setDisplayName(''); setError('');
-    setShowPassword(false); setShowConfirmPw(false);
+    setDisplayName(''); setDoctorUsername(''); setDoctorPassword('');
+    setError('');
+    setShowPassword(false); setShowConfirmPw(false); setShowDoctorPw(false);
   };
 
   /* ── Login ────────────────────────────────────────────────── */
@@ -132,6 +137,39 @@ export default function Login() {
       navigate(from, { replace: true });
     } catch (err) {
       setError(err?.message || 'Invalid email or password.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /* ── Doctor Login ─────────────────────────────────────────── */
+  const handleDoctorLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    const trimmed = doctorUsername.trim();
+    if (!trimmed) {
+      setError('Please enter your doctor username.');
+      return;
+    }
+
+    // Must start with "dr" (e.g. drsharma, drsmith)
+    if (!trimmed.toLowerCase().startsWith('dr')) {
+      setError('Doctor username must start with "dr" (e.g. drsharma or drsmith).');
+      return;
+    }
+
+    if (!doctorPassword) {
+      setError('Please enter your doctor password.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const user = await doctorLogin(trimmed, doctorPassword);
+      try { await initFirebaseSync(user.uid); } catch (_) {}
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err?.message || 'Invalid doctor credentials.');
     } finally {
       setIsLoading(false);
     }
@@ -188,14 +226,44 @@ export default function Login() {
   /* ── Tab switch ───────────────────────────────────────────── */
   const switchToSignup = () => { resetForm(); setMode('signup'); };
   const switchToLogin  = () => { resetForm(); setMode('login');  };
+  const switchToDoctor = () => { resetForm(); setMode('doctor'); };
 
   /* ══════════════════════════════════════════════════════════
      RENDER
      ══════════════════════════════════════════════════════════ */
   return (
     <div className="auth-page">
-      {/* Animated background */}
+      {/* Animated background with Scanner */}
       <div className="auth-bg">
+        <Scanner
+          color1="#5227FF"
+          color2="#FF9FFC"
+          color3="#FFFFFF"
+          speed={0.45}
+          sweepSpeed={0.22}
+          sweepWidth={1.6}
+          sweepFalloff={6}
+          scale={1.5}
+          frequency={2}
+          ripple={0.22}
+          bandDensity={11}
+          lineSharpness={5.5}
+          glow={0.25}
+          scanDirection="vertical"
+          colorSpread={0.7}
+          brightness={1.05}
+          contrast={1.15}
+          softness={1.4}
+          vignette={0.45}
+          scanline={true}
+          grain={true}
+          grainIntensity={0.04}
+          opacity={1.0}
+          mouseInteraction={true}
+          mouseRadius={0.5}
+          mouseStrength={0.5}
+          className="auth-scanner"
+        />
         <div className="auth-orb auth-orb-1" />
         <div className="auth-orb auth-orb-2" />
         <div className="auth-orb auth-orb-3" />
@@ -334,15 +402,14 @@ export default function Login() {
               </div>
 
               <div className="auth-form-title">
-                {mode === 'login'
-                  ? (<>Welcome back, <span className="auth-form-accent">Practitioner</span></>)
-                  : (<>Join <span className="auth-form-accent">MediVault</span> Today</>)
-                }
+                {mode === 'login' && (<>Welcome back, <span className="auth-form-accent">Patient</span></>)}
+                {mode === 'signup' && (<>Join <span className="auth-form-accent">MediVault</span> Today</>)}
+                {mode === 'doctor' && (<>Welcome, <span className="auth-form-accent">Doctor</span> 🩺</>)}
               </div>
               <p className="auth-form-sub">
-                {mode === 'login'
-                  ? 'Enter your email / username and password to sign in'
-                  : 'Create your secure personal health account'}
+                {mode === 'login' && 'Enter your email / username and password to sign in'}
+                {mode === 'signup' && 'Create your secure personal health account'}
+                {mode === 'doctor' && 'Enter your doctor credentials to sign in'}
               </p>
 
               {/* Error alert */}
@@ -406,6 +473,28 @@ export default function Login() {
                       Create one
                     </button>
                   </p>
+
+                  {/* Doctor Portal Quick Access */}
+                  <div className="auth-dr-divider">
+                    <span>OR HEALTHCARE ACCESS</span>
+                  </div>
+
+                  <div className="auth-dr-portal-box">
+                    <div className="auth-dr-portal-info">
+                      <div className="auth-dr-portal-title">
+                        <Stethoscope size={15} color="#38bdf8" /> Doctor Portal
+                      </div>
+                      <span className="auth-dr-portal-desc">Are you a registered healthcare doctor?</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="auth-dr-portal-btn"
+                      onClick={switchToDoctor}
+                      id="dr-login-from-signin-btn"
+                    >
+                      <Stethoscope size={14} /> Dr Login &rarr;
+                    </button>
+                  </div>
                 </form>
               )}
 
@@ -520,6 +609,88 @@ export default function Login() {
                     Already have an account?{' '}
                     <button type="button" className="auth-switch-link" onClick={switchToLogin}>
                       Sign in
+                    </button>
+                  </p>
+
+                  {/* ── DR LOGIN AT BOTTOM OF CREATE ACCOUNT ── */}
+                  <div className="auth-dr-divider">
+                    <span>OR HEALTHCARE ACCESS</span>
+                  </div>
+
+                  <div className="auth-dr-portal-box">
+                    <div className="auth-dr-portal-info">
+                      <div className="auth-dr-portal-title">
+                        <Stethoscope size={15} color="#38bdf8" /> Doctor Portal
+                      </div>
+                      <span className="auth-dr-portal-desc">Are you a medical doctor? Sign in to review patient data</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="auth-dr-portal-btn"
+                      onClick={switchToDoctor}
+                      id="dr-login-bottom-create-btn"
+                    >
+                      <Stethoscope size={14} /> Dr Login &rarr;
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* ── DOCTOR SIGN IN FORM ──────────────────── */}
+              {mode === 'doctor' && (
+                <form onSubmit={handleDoctorLogin} className="auth-form" noValidate>
+                  <AuthInput
+                    id="doctor-username"
+                    label="Doctor Username"
+                    type="text"
+                    value={doctorUsername}
+                    onChange={e => setDoctorUsername(e.target.value)}
+                    placeholder="e.g. drsharma or drsmith"
+                    icon={Stethoscope}
+                    autoFocus
+                  />
+
+                  <div className="auth-dr-rule-tag">
+                    <ShieldCheck size={13} color="#10b981" />
+                    <span>Note: Doctor username must start with <strong>"dr"</strong></span>
+                  </div>
+
+                  <AuthInput
+                    id="doctor-password"
+                    label="Password"
+                    type={showDoctorPw ? 'text' : 'password'}
+                    value={doctorPassword}
+                    onChange={e => setDoctorPassword(e.target.value)}
+                    placeholder="Enter doctor password"
+                    icon={KeyRound}
+                    rightEl={
+                      <button
+                        type="button"
+                        className="auth-eye-btn"
+                        onClick={() => setShowDoctorPw(v => !v)}
+                        aria-label={showDoctorPw ? 'Hide password' : 'Show password'}
+                      >
+                        {showDoctorPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    }
+                  />
+
+                  <button
+                    type="submit"
+                    className="auth-submit-btn auth-submit-btn--doctor"
+                    disabled={isLoading}
+                    id="doctor-submit"
+                  >
+                    {isLoading
+                      ? <><Loader2 size={18} className="auth-spinner" /> Verifying Doctor…</>
+                      : <><Stethoscope size={17} /> Sign In as Doctor</>
+                    }
+                  </button>
+
+                  <p className="auth-switch-text">
+                    Patient or individual user?{' '}
+                    <button type="button" className="auth-switch-link" onClick={switchToLogin}>
+                      Patient Sign in
                     </button>
                   </p>
                 </form>

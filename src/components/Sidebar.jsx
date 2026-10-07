@@ -6,6 +6,7 @@ import {
   UtensilsCrossed, Moon, Sun, Menu, X, ChevronRight, Settings, Thermometer
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getShortPatientId, formatHumanDisplayName } from '../utils/localAuth';
 
 /* ─── Shared avatar URL helper ────────────────────────────────────── */
 function resolveAvatarUrl(userId) {
@@ -35,13 +36,15 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
     if (!user?.id) return;
     const refresh = () => {
       setAvatarUrl(resolveAvatarUrl(user.id));
-      // Display name: prefer personal details firstName+lastName, fall back to username
+      // Display name: prefer personal details firstName+lastName, fall back to formatHumanDisplayName
       const pdRaw = localStorage.getItem(`medivault_personal_details_${user.id}`);
       const pd = pdRaw ? JSON.parse(pdRaw) : null;
-      if (pd?.firstName) {
+      if (pd?.fullName) {
+        setDisplayName(pd.fullName);
+      } else if (pd?.firstName) {
         setDisplayName(`${pd.firstName} ${pd.lastName || ''}`.trim());
       } else {
-        setDisplayName(user.username || 'User');
+        setDisplayName(formatHumanDisplayName(user));
       }
     };
 
@@ -126,6 +129,21 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
     navigate('/login');
   };
 
+  const isDoctor = Boolean(
+    user?.isDoctor ||
+    user?.role === 'doctor' ||
+    (user?.username && user.username.toLowerCase().startsWith('dr')) ||
+    (user?.displayName && user.displayName.toLowerCase().startsWith('dr')) ||
+    (() => {
+      try {
+        const uid = user?.id || user?.uid;
+        if (!uid) return false;
+        const pd = JSON.parse(localStorage.getItem(`medivault_personal_details_${uid}`) || '{}');
+        return pd?.role === 'doctor' || pd?.isDoctor === true;
+      } catch { return false; }
+    })()
+  );
+
   const SidebarContent = ({ isMobile = false }) => (
     <>
       {/* Logo */}
@@ -163,10 +181,12 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
             <span className="sidebar-patient-online-dot" />
           </div>
           <div className="sidebar-patient-info">
-            <div className="sidebar-patient-name">{displayName || user.username}</div>
-            <div className="sidebar-patient-id">#MV-{String(user.id || 1).padStart(4, '0')}</div>
+            <div className="sidebar-patient-name" title={displayName || user.username}>{displayName || user.username}</div>
+            <div className="sidebar-patient-id" title={user.id ? `Full ID: ${user.id}` : undefined}>#MV-{getShortPatientId(user.id)}</div>
           </div>
-          <div className="sidebar-patient-badge">ACTIVE</div>
+          <div className={`sidebar-patient-badge ${isDoctor ? 'sidebar-patient-badge--doctor' : ''}`}>
+            {isDoctor ? 'DOCTOR' : 'ACTIVE'}
+          </div>
         </div>
       )}
 
@@ -195,8 +215,12 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
             <User size={16} color="white" />
           </div>
           <div>
-            <div className="sidebar-doctor-name">Dr. Sterling</div>
-            <div className="sidebar-doctor-role">Cardiology Specialist</div>
+            <div className="sidebar-doctor-name">
+              {isDoctor ? (displayName || user?.displayName || 'Dr. ' + (user?.username || 'Doctor')) : 'Dr. Sterling'}
+            </div>
+            <div className="sidebar-doctor-role">
+              {isDoctor ? 'Consulting Doctor' : 'Cardiology Specialist'}
+            </div>
           </div>
         </div>
 
@@ -205,7 +229,7 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
           <span>{theme === 'dark' ? t('lightMode') || 'Light Mode' : t('darkMode')}</span>
         </button>
         <button className="sidebar-consult-btn" onClick={() => navigate('/consultation')}>
-          <Plus size={14} /> {t('consultation')}
+          <Plus size={14} /> {isDoctor ? (t('patientConsultation') || 'Patient Consultation') : t('consultation')}
         </button>
         <button className="sidebar-signout-btn" onClick={handleLogout}>
           <LogOut size={14} /> {t('logout')}

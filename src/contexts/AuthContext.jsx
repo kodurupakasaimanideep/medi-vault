@@ -18,6 +18,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import {
   localSignup,
   localLogin,
+  localDoctorLogin,
   localLogout,
   getSession,
   getUserByUid,
@@ -60,6 +61,13 @@ export function AuthProvider({ children }) {
     return profile;
   };
 
+  // ── Doctor Login ──────────────────────────────────────────────────────────
+  const doctorLogin = async (username, password) => {
+    const profile = await localDoctorLogin(username, password);
+    setCurrentUser(profile);
+    return profile;
+  };
+
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = () => {
     localLogout();
@@ -72,9 +80,24 @@ export function AuthProvider({ children }) {
     userProfile: currentUser,   // alias kept for API compatibility
     signup,
     login,
+    doctorLogin,
     logout,
     loading,
     isAdmin: currentUser?.role === 'admin',
+    isDoctor: Boolean(
+      currentUser?.role === 'doctor' ||
+      currentUser?.isDoctor === true ||
+      (currentUser?.username && currentUser.username.toLowerCase().startsWith('dr')) ||
+      (currentUser?.displayName && currentUser.displayName.toLowerCase().startsWith('dr')) ||
+      (() => {
+        try {
+          const uid = currentUser?.uid;
+          if (!uid) return false;
+          const pd = JSON.parse(localStorage.getItem(`medivault_personal_details_${uid}`) || '{}');
+          return pd?.role === 'doctor' || pd?.isDoctor === true;
+        } catch { return false; }
+      })()
+    ),
     isAuthenticated: !!currentUser,
   };
 

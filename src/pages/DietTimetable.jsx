@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Clock, User, Utensils, Edit3, Trash2, Plus, Save, Coffee, Sun, Moon, Apple } from 'lucide-react';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import { formatHumanDisplayName } from '../utils/localAuth';
+import './DietTimetable.css';
 
 const STORAGE_KEY = 'medivault_diet_timetable';
 
@@ -287,55 +289,52 @@ export default function DietTimetable({ user }) {
       mealType === 'Snacks' ? mt('snacks') : mt('dinner');
 
     return (
-      <div style={{ marginBottom: '2.5rem' }} className="animate-fade-in">
-        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', color: color, fontSize: '1.5rem', marginBottom: '1rem', fontWeight: '800' }}>
+      <div className="diet-tt-category-section animate-fade-in">
+        <h3 className="diet-tt-category-title" style={{ color: color }}>
           {icon} {translatedMealType}
         </h3>
         
         {/* Colorful Gradient Border Wrapper */}
-        <div style={{
-          background: gradient, 
-          padding: '3px',
-          borderRadius: '1.2rem',
-          boxShadow: `0 10px 25px ${color}22`
-        }}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'calc(1.2rem - 3px)', overflow: 'hidden' }}>
+        <div className="diet-tt-table-wrap" style={{ background: gradient, boxShadow: `0 8px 24px ${color}20` }}>
+          <div className="diet-tt-table-card">
             {filtered.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: `${color}0d`, borderBottom: `2px solid ${color}33`, color: color }}>
-                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700' }}>{mt('time')}</th>
-                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700' }}>{mt('item')}</th>
-                    <th style={{ padding: '1rem 1.5rem', fontWeight: '700', textAlign: 'right' }}>{mt('actions')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((slot, idx) => (
-                    <tr key={slot.id} style={{ borderBottom: idx !== filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.2s' }} onMouseOver={e=>e.currentTarget.style.background='#f8fafc'} onMouseOut={e=>e.currentTarget.style.background='transparent'}>
-                      <td style={{ padding: '1rem 1.5rem', fontWeight: '700', color: 'var(--text-main)' }}>
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.4rem 0.8rem', borderRadius: '0.5rem' }}>
-                          <Clock size={16} color={color} /> {slot.time}
-                        </div>
-                      </td>
-                      <td style={{ padding: '1rem 1.5rem', color: 'var(--text-main)', fontWeight: '600', fontSize: '1.05rem' }}>{slot.item}</td>
-                      <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                        <button onClick={() => handleEdit(slot)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer', color: '#3b82f6', marginRight: '0.8rem', padding: '0.5rem', borderRadius: '0.5rem', transition: 'all 0.2s' }} onMouseOver={e=>{e.currentTarget.style.background='#3b82f6'; e.currentTarget.style.color='#fff'}} onMouseOut={e=>{e.currentTarget.style.background='#eff6ff'; e.currentTarget.style.color='#3b82f6'}} title="Edit">
-                          <Edit3 size={18}/>
-                        </button>
-                        <button onClick={() => handleDelete(slot.id)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', padding: '0.5rem', borderRadius: '0.5rem', transition: 'all 0.2s' }} onMouseOver={e=>{e.currentTarget.style.background='#ef4444'; e.currentTarget.style.color='#fff'}} onMouseOut={e=>{e.currentTarget.style.background='#fef2f2'; e.currentTarget.style.color='#ef4444'}} title="Delete">
-                          <Trash2 size={18}/>
-                        </button>
-                      </td>
+              <div className="diet-tt-table-scroll">
+                <table className="diet-tt-table">
+                  <thead>
+                    <tr style={{ background: `${color}0d`, borderBottom: `2px solid ${color}33`, color: color }}>
+                      <th>{mt('time')}</th>
+                      <th>{mt('item')}</th>
+                      <th style={{ textAlign: 'right' }}>{mt('actions')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filtered.map((slot, idx) => (
+                      <tr key={slot.id} style={{ borderBottom: idx !== filtered.length - 1 ? '1px solid var(--border, #f1f5f9)' : 'none' }}>
+                        <td>
+                          <div className="diet-tt-time-pill">
+                            <Clock size={15} color={color} /> {slot.time}
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--text-main)', fontWeight: '600' }}>{slot.item}</td>
+                        <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                          <button onClick={() => handleEdit(slot)} className="diet-tt-action-btn diet-tt-edit-btn" title="Edit">
+                            <Edit3 size={16}/>
+                          </button>
+                          <button onClick={() => handleDelete(slot.id)} className="diet-tt-action-btn diet-tt-del-btn" title="Delete">
+                            <Trash2 size={16}/>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div style={{ padding: '2.5rem', textAlign: 'center', color: '#cbd5e1' }}>
-                <div style={{ background: '#f8fafc', width: '60px', height: '60px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#cbd5e1' }}>
+                <div style={{ background: 'var(--bg-subtle, #f8fafc)', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
                    {icon}
                 </div>
-                <p style={{ fontWeight: '600', color: '#94a3b8' }}>{mt('noItems')}</p>
+                <p style={{ fontWeight: '600', color: '#94a3b8', margin: 0 }}>{mt('noItems')}</p>
               </div>
             )}
           </div>
@@ -345,11 +344,10 @@ export default function DietTimetable({ user }) {
   };
 
   return (
-    <div className="inner-page animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
+    <div className="diet-tt-container animate-fade-in">
 
       {/* Dynamic Floating Food/Veggie Background Emojis */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
-        {/* Style block for floating animations */}
+      <div className="diet-tt-bg-emojis">
         <style>{`
           @keyframes bgFloat1 {
             0% { transform: translateY(0px) rotate(0deg); }
@@ -365,14 +363,6 @@ export default function DietTimetable({ user }) {
             0% { transform: translateY(0px) rotate(0deg); }
             50% { transform: translateY(-30px) rotate(10deg); }
             100% { transform: translateY(0px) rotate(0deg); }
-          }
-          .floating-food-bg {
-            position: absolute;
-            opacity: 0.14;
-            filter: grayscale(10%) blur(0.2px);
-            pointer-events: none;
-            user-select: none;
-            transition: transform 0.3s ease;
           }
         `}</style>
 
@@ -392,76 +382,60 @@ export default function DietTimetable({ user }) {
       </div>
 
       {/* Header */}
-      <div style={{ position: 'relative', overflow: 'hidden', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', background: 'linear-gradient(135deg, #ffedd5 0%, #fef3c7 50%, #fcd34d 100%)', padding: '2rem 3rem', borderRadius: '1.5rem', boxShadow: '0 15px 35px rgba(245, 158, 11, 0.15)', border: '2px solid #fde68a' }}>
-        
-        {/* Floating Food Stickers */}
-        <div style={{ position: 'absolute', top: '10%', left: '4%', fontSize: '2.5rem', transform: 'rotate(-15deg)', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 4s ease-in-out infinite' }}>🥑</div>
-        <div style={{ position: 'absolute', bottom: '15%', left: '25%', fontSize: '3.2rem', transform: 'rotate(20deg)', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 5s ease-in-out infinite alternate' }}>🍓</div>
-        <div style={{ position: 'absolute', top: '15%', right: '40%', fontSize: '2.2rem', transform: 'rotate(-5deg)', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 6s ease-in-out infinite reverse' }}>🥐</div>
-        <div style={{ position: 'absolute', bottom: '10%', right: '25%', fontSize: '2.8rem', transform: 'rotate(15deg)', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 4.5s ease-in-out infinite' }}>🥗</div>
-        <div style={{ position: 'absolute', top: '15%', right: '6%', fontSize: '3.5rem', transform: 'rotate(-10deg)', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 3.5s ease-in-out infinite' }}>🍔</div>
-        <div style={{ position: 'absolute', bottom: '-5%', right: '12%', fontSize: '2rem', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 7s ease-in-out infinite' }}>🥝</div>
-        <div style={{ position: 'absolute', top: '-5%', left: '35%', fontSize: '2.2rem', filter: 'drop-shadow(2px 4px 6px rgba(0,0,0,0.1))', animation: 'float 5.5s ease-in-out infinite alternate' }}>🍳</div>
-
-        <div style={{ position: 'relative', zIndex: 10 }}>
-          <h1 style={{ fontSize: '2.8rem', color: '#b45309', fontWeight: '900', margin: 0, textShadow: '2px 2px 4px rgba(251, 191, 36, 0.3)' }}>
-            {mt('title')} <span style={{ color: '#ea580c' }}>{mt('titleSpan')}</span> 🍽️
+      <div className="diet-tt-hero">
+        <div className="diet-tt-hero-content">
+          <h1 className="diet-tt-title">
+            {mt('title')} <span>{mt('titleSpan')}</span> 🍽️
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.8rem' }}>
-            <p style={{ color: '#9a3412', margin: 0, fontWeight: '600', fontSize: '1.1rem', background: 'rgba(255, 255, 255, 0.4)', padding: '0.4rem 0.8rem', borderRadius: '0.5rem', display: 'inline-block' }}>{mt('subtitle')}</p>
-            <div style={{ background: 'rgba(255, 255, 255, 0.6)', padding: '0.4rem 1rem', borderRadius: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(255, 255, 255, 0.8)' }}>
-              <User size={18} color="#ea580c" />
-              <span style={{ fontWeight: '800', color: '#b45309', textTransform: 'capitalize' }}>{user?.username || mt('patient')}</span>
+          <div className="diet-tt-meta-row">
+            <p className="diet-tt-subtitle">{mt('subtitle')}</p>
+            <div className="diet-tt-user-chip">
+              <User size={16} color="#ea580c" />
+              <span>{formatHumanDisplayName(user)}</span>
             </div>
           </div>
         </div>
-        <div style={{ position: 'relative', zIndex: 10, background: 'var(--surface)', padding: '1.2rem', borderRadius: '1.2rem', color: '#ea580c', boxShadow: '0 8px 16px rgba(234, 88, 12, 0.2)' }}>
+        <div className="diet-tt-hero-icon">
           <Utensils size={36} />
         </div>
       </div>
 
       {/* Add / Edit Form */}
-      <div style={{ background: 'var(--surface)', padding: '2rem 2.5rem', borderRadius: '1.5rem', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', marginBottom: '3rem', border: '1px solid var(--border)', position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative corner */}
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '150px', height: '150px', background: '#f0fdfa', borderRadius: '50%', zIndex: 0 }}></div>
-        
-        <h2 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '1.5rem', position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div className="diet-tt-form-card">
+        <h2 className="diet-tt-form-title">
            {isEditing ? <Edit3 color="#3b82f6"/> : <Plus color="#14b8a6"/>}
            {isEditing ? mt('updateSlot') : mt('addSlot')}
         </h2>
 
-        <form onSubmit={handleSave} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem', position: 'relative', zIndex: 1 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>{mt('mealTime')}</label>
-             <div style={{ position: 'relative' }}>
-               <Clock size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}/>
+        <form onSubmit={handleSave} className="diet-tt-form-grid">
+          <div className="diet-tt-field">
+            <label>{mt('mealTime')}</label>
+             <div className="diet-tt-input-wrap">
+               <Clock size={18} className="diet-tt-input-icon"/>
                <input 
                  type="time" required value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})}
-                 style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '0.75rem', border: '2px solid #e2e8f0', background: '#f8fafc', fontWeight: '500', fontSize: '1rem', transition: 'border-color 0.2s', outline: 'none' }}
-                 onFocus={e => e.target.style.borderColor = '#14b8a6'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                 className="diet-tt-input"
                />
              </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>{mt('foodItems')}</label>
-             <div style={{ position: 'relative' }}>
-               <Utensils size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}/>
+          <div className="diet-tt-field">
+            <label>{mt('foodItems')}</label>
+             <div className="diet-tt-input-wrap">
+               <Utensils size={18} className="diet-tt-input-icon"/>
                <input 
                  type="text" required value={formData.item} onChange={(e) => setFormData({...formData, item: e.target.value})}
                  placeholder="e.g. 2 Apples, Oats"
-                 style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '0.75rem', border: '2px solid #e2e8f0', background: '#f8fafc', fontWeight: '500', fontSize: '1rem', transition: 'border-color 0.2s', outline: 'none' }}
-                 onFocus={e => e.target.style.borderColor = '#14b8a6'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                 className="diet-tt-input"
                />
              </div>
           </div>
 
-          <div>
-            <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>{mt('mealCategory')}</label>
+          <div className="diet-tt-field">
+            <label>{mt('mealCategory')}</label>
             <select 
               value={formData.mealType} onChange={(e) => setFormData({...formData, mealType: e.target.value})}
-              style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '0.75rem', border: '2px solid var(--border)', background: 'var(--bg-color)', fontWeight: '600', color: 'var(--text-main)', fontSize: '1rem', outline: 'none', cursor: 'pointer' }}
-              onFocus={e => e.target.style.borderColor = '#14b8a6'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+              className="diet-tt-select"
             >
               <option value="Breakfast">{mt('breakfast')}</option>
               <option value="Lunch">{mt('lunch')}</option>
@@ -470,14 +444,16 @@ export default function DietTimetable({ user }) {
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+          <div className="diet-tt-submit-wrap">
             <button 
                type="submit" 
-               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.9rem', borderRadius: '0.75rem', background: isEditing ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #14b8a6, #0d9488)', color: 'white', fontWeight: 'bold', fontSize: '1rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 15px rgba(20, 184, 166, 0.3)', transition: 'transform 0.2s' }}
-               onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-               onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+               className="diet-tt-submit-btn"
+               style={{
+                 background: isEditing ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'linear-gradient(135deg, #14b8a6, #0d9488)',
+                 boxShadow: isEditing ? '0 4px 15px rgba(59, 130, 246, 0.3)' : '0 4px 15px rgba(20, 184, 166, 0.3)'
+               }}
             >
-              {isEditing ? <Save size={20}/> : <Plus size={20}/>}
+              {isEditing ? <Save size={18}/> : <Plus size={18}/>}
               {isEditing ? mt('saveChanges') : mt('addToSchedule')}
             </button>
           </div>

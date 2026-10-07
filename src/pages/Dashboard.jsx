@@ -7,10 +7,11 @@ import {
   Search, Bell, Settings, User, Edit3, MoreVertical, Heart,
   Activity, 
   ChevronRight, Calendar, Pill, Droplets, Utensils, Dumbbell,
-  FileText, Brain, Clock, X, TrendingUp, Flame, Star, Moon
+  FileText, Brain, Clock, X, TrendingUp, Flame, Star, Moon, Shield
 } from 'lucide-react';
 import { getIdealSleepRange } from '../utils/sleepHelper';
 import { getStreak, recordDailyActivity, getRecentStreakDays } from '../utils/streakHelper';
+import { getShortPatientId, formatHumanDisplayName } from '../utils/localAuth';
 
 export default function Dashboard({ user }) {
   const navigate = useNavigate();
@@ -501,8 +502,9 @@ export default function Dashboard({ user }) {
   }, []);
 
   useEffect(() => {
-    if (user?.id) {
-      const data = localStorage.getItem(`medivault_patient_info_${user.id}`);
+    if (user?.id || user?.username) {
+      const data = (user?.id ? localStorage.getItem(`medivault_patient_info_${user.id}`) : null) ||
+                   (user?.username ? localStorage.getItem(`medivault_patient_info_${user.username}`) : null);
       if (data) setPatientData(JSON.parse(data));
     }
   }, [user]);
@@ -510,11 +512,13 @@ export default function Dashboard({ user }) {
   // ── Load personal details from the post-login modal ────────────────────
   const [personalDetails, setPersonalDetails] = useState(null);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id && !user?.username) return;
     const refresh = () => {
-      const raw = localStorage.getItem(`medivault_personal_details_${user.id}`);
+      const raw = (user?.id ? localStorage.getItem(`medivault_personal_details_${user.id}`) : null) ||
+                  (user?.username ? localStorage.getItem(`medivault_personal_details_${user.username}`) : null);
       if (raw) setPersonalDetails(JSON.parse(raw));
-      const piRaw = localStorage.getItem(`medivault_patient_info_${user.id}`);
+      const piRaw = (user?.id ? localStorage.getItem(`medivault_patient_info_${user.id}`) : null) ||
+                    (user?.username ? localStorage.getItem(`medivault_patient_info_${user.username}`) : null);
       if (piRaw) setPatientData(JSON.parse(piRaw));
     };
     refresh();
@@ -637,12 +641,10 @@ export default function Dashboard({ user }) {
     { label: ct('calendarView'), path: '/calendar-view', icon: Calendar, color: '#6366f1' },
   ];
 
-  // Build display name: prefer PatientInfo fullName, then personal details, then username
+  // Build human-friendly display name: prefer PatientInfo fullName, then personal details, then formatHumanDisplayName
   const patientName = patientData?.fullName ||
-    (personalDetails ? `${personalDetails.firstName} ${personalDetails.lastName}` : null) ||
-    (user?.username
-      ? user.username.charAt(0).toUpperCase() + user.username.slice(1)
-      : ct('patient'));
+    (personalDetails ? (personalDetails.fullName || `${personalDetails.firstName || ''} ${personalDetails.lastName || ''}`.trim()) : null) ||
+    formatHumanDisplayName(user);
 
   // Build first / last name chips from personal details
   const pdFirstName = personalDetails?.firstName || '';
@@ -689,6 +691,14 @@ export default function Dashboard({ user }) {
   const timeString = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const climateText = ct('climate');
 
+  const getGreeting = () => {
+    if (hour >= 5 && hour < 12) return { text: 'Good morning', wish: 'Wishing you a refreshed start today' };
+    if (hour >= 12 && hour < 17) return { text: 'Good afternoon', wish: 'Stay energized and hydrated today' };
+    if (hour >= 17 && hour < 21) return { text: 'Good evening', wish: 'Take time to unwind and nourish your body' };
+    return { text: 'Restful night', wish: 'Wishing you peaceful rest and recovery' };
+  };
+  const greeting = getGreeting();
+
   const localQuotes = ct('quotes');
   const dailyQuote = localQuotes[new Date().getDay() % localQuotes.length];
 
@@ -734,29 +744,64 @@ export default function Dashboard({ user }) {
 
   return (
     <div className="dash-main">
-      {/* Top Header with Timing and Climate */}
+      {/* Top Header with Timing, Human Greeting, and Climate */}
       <div className="dash-top-timing" style={{ 
         background: timeColor, 
-        padding: '1rem 2rem', 
+        padding: '0.85rem 2rem', 
         color: 'white', 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-        zIndex: 10
+        boxShadow: '0 4px 18px rgba(0,0,0,0.12)',
+        zIndex: 10,
+        position: 'relative'
       }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '1.5rem', fontWeight: '800', letterSpacing: '2px', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-            {timeIcon} {timeString}
-          </span>
-          <span style={{ fontSize: '0.9rem', fontWeight: '500', opacity: 0.9, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>{liveWeather.text}, {liveWeather.temp}°C</span>
-            <span style={{ fontSize: '1.15rem', display: 'inline-flex', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.15))' }}>{liveWeather.symbol}</span>
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+          <div style={{ 
+            width: '46px', height: '46px', borderRadius: '50%', 
+            background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.45rem', boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(255,255,255,0.3)', flexShrink: 0
+          }}>
+            {timeIcon}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.01em', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                {greeting.text}, {patientName}! 👋
+              </span>
+              <span style={{ 
+                fontSize: '0.8rem', padding: '2px 8px', borderRadius: '12px', 
+                background: 'rgba(255,255,255,0.22)', fontWeight: '600',
+                border: '1px solid rgba(255,255,255,0.3)'
+              }}>
+                {timeString}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.85rem', fontWeight: '500', opacity: 0.95, marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{greeting.wish}</span>
+              <span style={{ opacity: 0.7 }}>•</span>
+              <span>{liveWeather.text}, {liveWeather.temp}°C {liveWeather.symbol}</span>
+            </span>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <Bell size={20} style={{ cursor: 'pointer' }} />
-          <Settings size={20} style={{ cursor: 'pointer' }} onClick={() => navigate('/settings')} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          <button 
+            className="dash-top-btn" 
+            title="Notifications"
+            style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <Bell size={18} />
+          </button>
+          <button 
+            className="dash-top-btn" 
+            title="Settings" 
+            onClick={() => navigate('/settings')}
+            style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <Settings size={18} />
+          </button>
         </div>
       </div>
 
@@ -773,11 +818,26 @@ export default function Dashboard({ user }) {
             </div>
             <div className="dash-patient-details">
               <div className="dash-patient-header-row">
-                <h2 className="dash-patient-full-name">
-                  {salutation && <span style={{ fontSize:'1rem', fontWeight:'600', opacity:0.85, marginRight:'4px' }}>{salutation}</span>}
-                  {patientName}
-                </h2>
-                <span className="dash-patient-id-badge">{ct('patientId')}: #MV-{String(user?.id || 1).padStart(4, '0')}</span>
+                <div className="dash-patient-title-group">
+                  <h2 className="dash-patient-full-name">
+                    {salutation && <span style={{ fontSize:'1rem', fontWeight:'600', opacity:0.85, marginRight:'4px' }}>{salutation}</span>}
+                    {patientName}
+                  </h2>
+                  {user?.username && (
+                    <span className="dash-patient-username-badge" title="Username">
+                      <User size={12} />
+                      <span>@{user.username}</span>
+                    </span>
+                  )}
+                </div>
+                <span 
+                  className="dash-patient-id-badge" 
+                  title={user?.id ? `Full ID: ${user.id}` : undefined}
+                >
+                  <Shield size={11} className="dash-patient-id-icon" />
+                  <span className="dash-patient-id-label">{ct('patientId')}:</span>
+                  <span className="dash-patient-id-number">#MV-{getShortPatientId(user?.id)}</span>
+                </span>
               </div>
               <div className="dash-patient-meta">
                 <span className="dash-meta-chip">
@@ -804,6 +864,15 @@ export default function Dashboard({ user }) {
               {/* Personal Details Strip from modal — shown when personal details are saved */}
               {showPersonalStrip && (
                 <div className="dash-personal-info-strip">
+                  {user?.username && (
+                    <div className="dash-personal-chip">
+                      <span>🏷️</span>
+                      <span>Username: <strong>@{user.username}</strong></span>
+                    </div>
+                  )}
+                  {user?.username && (pdFirstName || pdLastName || pdDob || pdGender) && (
+                    <div className="dash-personal-chip"><span className="dot" /></div>
+                  )}
                   {pdFirstName && (
                     <div className="dash-personal-chip">
                       <span>👤</span>
@@ -837,8 +906,9 @@ export default function Dashboard({ user }) {
                 </div>
               )}
 
-              <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: '3px solid #10b981', display: 'inline-block' }}>
-                <span style={{ fontSize: '0.85rem', color: '#e2e8f0', fontStyle: 'italic' }}>"{dailyQuote}"</span>
+              <div className="dash-wellness-quote">
+                <span className="dash-wellness-quote-tag">🌱 Daily Wellness Whisper:</span>
+                <span className="dash-wellness-quote-text">"{dailyQuote}"</span>
               </div>
             </div>
             <div className="dash-patient-actions">
@@ -872,19 +942,22 @@ export default function Dashboard({ user }) {
             </div>
             <div className="dash-lifestyle-list">
               {[
-                { icon: <Droplets size={16} />, label: ct('waterIntake'), val: lifestyleStats.water.text, color: '#06b6d4', pct: lifestyleStats.water.pct },
-                { icon: <Utensils size={16} />, label: ct('dietScore'), val: lifestyleStats.diet.text, color: '#10b981', pct: lifestyleStats.diet.pct },
-                { icon: <Dumbbell size={16} />, label: ct('exercise'), val: lifestyleStats.exercise.text, color: '#8b5cf6', pct: lifestyleStats.exercise.pct },
-                { icon: <Brain size={16} />, label: ct('yogaStreaks'), val: `${yogaStreaks} ${ct('daysFire')}`, color: '#ec4899', pct: Math.min((yogaStreaks/30)*100, 100) },
-                { icon: <Moon size={16} />, label: ct('sleepTracker') || 'Sleep Tracker', val: lifestyleStats.sleep.text, color: '#6366f1', pct: lifestyleStats.sleep.pct, isSleep: true },
+                { icon: <Droplets size={16} />, label: ct('waterIntake'), val: lifestyleStats.water.text, color: '#06b6d4', pct: lifestyleStats.water.pct, hint: 'Hydrate well' },
+                { icon: <Utensils size={16} />, label: ct('dietScore'), val: lifestyleStats.diet.text, color: '#10b981', pct: lifestyleStats.diet.pct, hint: 'Fuel body' },
+                { icon: <Dumbbell size={16} />, label: ct('exercise'), val: lifestyleStats.exercise.text, color: '#8b5cf6', pct: lifestyleStats.exercise.pct, hint: 'Stay active' },
+                { icon: <Brain size={16} />, label: ct('yogaStreaks'), val: `${yogaStreaks} ${ct('daysFire')}`, color: '#ec4899', pct: Math.min((yogaStreaks/30)*100, 100), hint: 'Mind & focus' },
+                { icon: <Moon size={16} />, label: ct('sleepTracker') || 'Sleep Tracker', val: lifestyleStats.sleep.text, color: '#6366f1', pct: lifestyleStats.sleep.pct, isSleep: true, hint: 'Rest is medicine' },
               ].map((item, i) => (
-                <div key={i} className="dash-lifestyle-item" style={{ background: 'var(--bg-color)', padding: '10px', borderRadius: '10px', marginBottom: '8px', borderLeft: `3px solid ${item.color}` }}>
+                <div key={i} className="dash-lifestyle-item" style={{ background: 'var(--bg-color)', padding: '10px 12px', borderRadius: '12px', marginBottom: '8px', borderLeft: `3px solid ${item.color}` }}>
                   <div className="dash-lifestyle-icon" style={{ color: item.color, background: `${item.color}1a` }}>
                     {item.icon}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div className="dash-lifestyle-row">
-                      <span className="dash-lifestyle-label">{item.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span className="dash-lifestyle-label">{item.label}</span>
+                        <span style={{ fontSize: '0.62rem', color: item.color, background: `${item.color}18`, padding: '1px 6px', borderRadius: '10px', fontWeight: '700' }}>{item.hint}</span>
+                      </div>
                       <span className="dash-lifestyle-val" style={{ fontWeight: '600' }}>{item.val}</span>
                     </div>
                     <div className="dash-lifestyle-bar">

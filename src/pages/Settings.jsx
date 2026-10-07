@@ -8,6 +8,7 @@ import {
 import './Settings.css';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getShortPatientId } from '../utils/localAuth';
 
 export default function SettingsPage({ user, theme, toggleTheme, onLogout }) {
   const navigate = useNavigate();
@@ -228,8 +229,8 @@ export default function SettingsPage({ user, theme, toggleTheme, onLogout }) {
                 </div>
                 <div className="settings-field">
                   <label>User ID</label>
-                  <div className="settings-field-value">
-                    <Shield size={16} /> #MV-{String(user?.id || 1).padStart(4, '0')}
+                  <div className="settings-field-value" title={user?.id ? `Full UUID: ${user.id}` : undefined}>
+                    <Shield size={16} /> #MV-{getShortPatientId(user?.id)}
                   </div>
                 </div>
                 <div className="settings-field">

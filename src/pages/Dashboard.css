@@ -23,8 +23,8 @@
    SIDEBAR
    ===================================================== */
 .sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 245px;
+  min-width: 245px;
   background: #09101d;
   display: flex;
   flex-direction: column;
@@ -131,6 +131,9 @@
 }
 .sidebar-patient-id {
   font-size: 0.65rem; color: #64748b; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.02em;
 }
 .sidebar-patient-badge {
   font-size: 0.52rem; font-weight: 700;
@@ -139,6 +142,11 @@
   letter-spacing: 0.05em;
   flex-shrink: 0;
   border: 1px solid rgba(52, 211, 153, 0.25);
+}
+.sidebar-patient-badge--doctor {
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
 }
 
 /* Nav */
@@ -558,24 +566,102 @@
 }
 .dash-patient-status-dot {
   position: absolute; bottom: 2px; right: 2px;
-  width: 13px; height: 13px; border-radius: 50%;
+  width: 14px; height: 14px; border-radius: 50%;
   background: #10b981; border: 2.5px solid #0a1324;
   box-shadow: 0 0 8px rgba(16,185,129,0.8);
+  animation: livingPulse 2.2s infinite ease-in-out;
 }
-.dash-patient-details { flex: 1; }
+
+@keyframes livingPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.dash-wellness-quote {
+  margin-top: 14px;
+  padding: 10px 16px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  backdrop-filter: blur(4px);
+}
+.dash-wellness-quote-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #34d399;
+  letter-spacing: 0.02em;
+}
+.dash-wellness-quote-text {
+  font-size: 0.86rem;
+  color: #f1f5f9;
+  font-style: italic;
+}
+.dash-patient-details { flex: 1; min-width: 0; }
 .dash-patient-header-row {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.dash-patient-title-group {
+  display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .dash-patient-full-name {
   font-size: 1.35rem; font-weight: 800; color: #fff;
   letter-spacing: -0.02em;
+  margin: 0;
+}
+.dash-patient-username-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 9px;
+  border-radius: 6px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+}
+.dash-patient-username-badge:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(56, 189, 248, 0.45);
 }
 .dash-patient-id-badge {
-  font-size: 0.72rem; color: #cbd5e1;
-  background: rgba(255,255,255,0.08);
-  padding: 3px 10px; border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+  background: rgba(255,255,255,0.06);
+  padding: 3px 10px;
+  border-radius: 6px;
   border: 1px solid rgba(255,255,255,0.14);
   font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+.dash-patient-id-badge:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.24);
+}
+.dash-patient-id-icon {
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+.dash-patient-id-label {
+  opacity: 0.85;
+}
+.dash-patient-id-number {
+  color: #38bdf8;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.03em;
 }
 .dash-patient-meta {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -733,14 +819,15 @@
 /* Cards */
 .dash-card {
   background: var(--surface);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 18px;
+  padding: 22px;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
 }
 .dash-card:hover {
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
   border-color: var(--border-focus);
 }
 .dash-card-header {
@@ -1030,11 +1117,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 0.72rem;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 0.74rem;
 }
 
 .dash-perf-metric-k {
@@ -1267,6 +1355,11 @@
 
   /* Dashboard inner */
   .dash-main { height: auto; overflow: visible; }
+  .dash-top-timing {
+    padding: 0.85rem 1rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.75rem !important;
+  }
   .dash-content { padding: 12px 14px; overflow-y: visible; height: auto; }
   .dash-topbar { display: none; } /* hide internal topbar — mobile bar covers it */
 

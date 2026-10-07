@@ -6,8 +6,8 @@ import { syncTabletAlarmsToSW, requestNotificationPermission } from '../services
 import { syncRemindersToFirestore } from '../services/notificationManager';
 import { scheduleNativeTabletAlarms, requestNativePermissions, isNativeApp } from '../services/nativeNotificationService';
 import SectionAbout from '../components/SectionAbout';
-
 import { useLanguage } from '../contexts/LanguageContext';
+import './TabletAlarm.css';
 
 const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#8b5cf6');
@@ -479,7 +479,7 @@ export default function TabletAlarm({ user }) {
   };
 
   const handleToggle = (id) => {
-    const updated = alarms.map(a => a.id === id ? { ...a, active: !a.active } : a);
+    const updated = alarms.map(a => a.id === id ? { ...a, active: !a.active, lastTriggered: null, lastTriggeredKey: null } : a);
     saveAlarms(updated);
   };
 
@@ -513,10 +513,10 @@ export default function TabletAlarm({ user }) {
     let updated;
     if (newAlarm.id) {
       // Edit
-      updated = alarms.map(a => a.id === newAlarm.id ? newAlarm : a);
+      updated = alarms.map(a => a.id === newAlarm.id ? { ...newAlarm, lastTriggered: null, lastTriggeredKey: null } : a);
     } else {
       // Add
-      updated = [...alarms, { ...newAlarm, id: Date.now() }];
+      updated = [...alarms, { ...newAlarm, id: Date.now(), lastTriggered: null, lastTriggeredKey: null }];
     }
     
     saveAlarms(updated);
@@ -625,27 +625,16 @@ export default function TabletAlarm({ user }) {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ padding: '2rem' }}>
+    <div className="tablet-alarm-container animate-fade-in">
       {/* Header section with gradient and glassy modern look */}
-      <div style={{
-        background: 'linear-gradient(135deg, #EE5A24, #f97316)',
-        borderRadius: '1rem',
-        padding: '2rem',
-        marginBottom: '2rem',
-        boxShadow: '0 10px 25px -5px rgba(238, 90, 36, 0.4)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        color: 'white',
-        position: 'relative'
-      }}>
-        <div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <Bell size={36} className="animate-pulse" /> {ct('title')}
+      <div className="tablet-alarm-hero">
+        <div className="tablet-alarm-hero-title-wrap">
+          <h1 className="tablet-alarm-hero-title">
+            <Bell size={32} className="animate-pulse" /> {ct('title')}
           </h1>
-          <p style={{ marginTop: '0.5rem', opacity: 0.9 }}>{ct('subtitle')}</p>
+          <p className="tablet-alarm-hero-sub">{ct('subtitle')}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '1rem' }}>
+        <div className="tablet-alarm-hero-actions">
           <SectionAbout
             title={ct('title')}
             icon="⏰"
@@ -654,41 +643,41 @@ export default function TabletAlarm({ user }) {
             what={ct('aboutWhat')}
             howToUse={ct('aboutHow')}
             importance={ct('aboutWhy')}
-            style={{ position: 'absolute', top: '0.6rem', right: '1.25rem', background: 'rgba(255, 255, 255, 0.18)', border: '1px solid rgba(255, 255, 255, 0.25)' }}
           />
+          <button
+            onClick={() => {
+              const testAlarm = alarms.find(a => a.active) || alarms[0] || {
+                id: Date.now(),
+                tablet: 'Vitamin C',
+                time: new Date().toTimeString().slice(0, 5),
+                music: 'Dreamscape',
+                color: '#a855f7',
+                active: true,
+              };
+              const event = new CustomEvent('medivault_test_alarm', { detail: testAlarm });
+              window.dispatchEvent(event);
+            }}
+            className="tablet-alarm-btn-test"
+            title="Preview the exact Medicine Reminder modal on screen"
+          >
+            <Bell size={16}/> Test Popup
+          </button>
           <button 
             onClick={() => {
               setNewAlarm({ id: null, tablet: '', time: '', music: 'Gentle Chime', color: '#3b82f6', active: true });
               setShowAddForm(!showAddForm);
             }}
             disabled={showAddForm}
-            style={{
-              background: 'white', color: '#EE5A24', border: 'none',
-              padding: '0.75rem 1.5rem', borderRadius: '2rem',
-              fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-              opacity: showAddForm ? 0.5 : 1
-            }}
+            className="tablet-alarm-btn-add"
           >
-            <Plus size={18}/> {ct('setAlarm')}
+            <Plus size={16}/> {ct('setAlarm')}
           </button>
         </div>
       </div>
 
       {/* Background Notification Status Banner */}
       {notifPermission !== 'granted' && (
-        <div style={{
-          background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-          border: '1px solid #f59e0b',
-          borderRadius: '0.75rem',
-          padding: '1rem 1.5rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '1rem',
-          flexWrap: 'wrap'
-        }}>
+        <div className="tablet-alarm-notif-banner-warning">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{ fontSize: '1.5rem' }}>⚠️</span>
             <div>
@@ -706,28 +695,14 @@ export default function TabletAlarm({ user }) {
                 setNotifPermission(perm);
               }
             }}
-            style={{
-              background: '#f59e0b', color: 'white', border: 'none',
-              padding: '0.6rem 1.2rem', borderRadius: '0.5rem',
-              fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
-            }}
+            className="tablet-alarm-notif-btn"
           >
             {ct('allowNotif')}
           </button>
-
         </div>
       )}
       {notifPermission === 'granted' && (
-        <div style={{
-          background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)',
-          border: '1px solid #10b981',
-          borderRadius: '0.75rem',
-          padding: '0.75rem 1.5rem',
-          marginBottom: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem'
-        }}>
+        <div className="tablet-alarm-notif-banner-success">
           <span style={{ fontSize: '1.3rem' }}>✅</span>
           <span style={{ color: '#065f46', fontWeight: '600' }}>
             {ct('notifActive')}
@@ -735,11 +710,11 @@ export default function TabletAlarm({ user }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2" style={{ gap: '2rem', alignItems: 'start' }}>
+      <div className="tablet-alarm-grid">
         
         {/* Active Alarms List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '0.5rem' }}>{ct('reminders')}</h2>
+        <div className="tablet-alarm-list">
+          <h2 className="tablet-alarm-section-title">{ct('reminders')}</h2>
           {alarms.length === 0 ? (
             <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
               <Clock size={48} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
@@ -747,38 +722,51 @@ export default function TabletAlarm({ user }) {
             </div>
           ) : (
             alarms.map(alarm => (
-              <div key={alarm.id} className="card" style={{ 
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              <div key={alarm.id} className="tablet-alarm-card" style={{ 
                 borderLeft: `6px solid ${alarm.active ? (alarm.color || '#3b82f6') : '#cbd5e1'}`,
-                background: alarm.active ? `rgba(${hexToRgb(alarm.color || '#3b82f6')}, 0.14)` : 'var(--surface)',
+                background: alarm.active ? `rgba(${hexToRgb(alarm.color || '#3b82f6')}, 0.12)` : 'var(--surface)',
                 border: alarm.active ? `1.5px solid rgba(${hexToRgb(alarm.color || '#3b82f6')}, 0.35)` : '1px solid var(--border)',
-                boxShadow: alarm.active ? `0 10px 20px rgba(${hexToRgb(alarm.color || '#3b82f6')}, 0.08)` : 'none',
-                transition: 'all 0.3s ease',
+                boxShadow: alarm.active ? `0 8px 20px rgba(${hexToRgb(alarm.color || '#3b82f6')}, 0.08)` : 'none',
                 opacity: alarm.active ? 1 : 0.7
               }}>
-                <div>
-                  <h2 style={{ fontSize: '2.2rem', fontWeight: '800', color: alarm.active ? 'var(--text-main)' : 'var(--text-muted)' }}>{alarm.time}</h2>
-                  <p style={{ fontSize: '1.1rem', color: alarm.active ? (alarm.color || '#3b82f6') : 'var(--text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: '600' }}>
-                    <Pill size={16} /> {alarm.tablet}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    {alarm.music.startsWith('voice_') ? <Mic size={14} /> : <Music size={14} />} 
-                    {ct('soundLabel')}: {alarm.music.startsWith('voice_') ? (voices.find(v => v.id === alarm.music)?.name || 'Human Voice') : alarm.music}
+                <div className="tablet-alarm-card-top-row">
+                  <div>
+                    <h2 className="tablet-alarm-time" style={{ color: alarm.active ? 'var(--text-main)' : 'var(--text-muted)' }}>{alarm.time}</h2>
+                    <p className="tablet-alarm-pill-name" style={{ color: alarm.active ? (alarm.color || '#3b82f6') : 'var(--text-muted)' }}>
+                      <Pill size={16} /> {alarm.tablet}
+                    </p>
                   </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
                   <div 
                     onClick={() => handleToggle(alarm.id)}
-                    style={{ position: 'relative', display: 'inline-block', width: '46px', height: '24px', background: alarm.active ? (alarm.color || '#3b82f6') : '#e2e8f0', borderRadius: '24px', cursor: 'pointer', transition: 'background 0.3s' }}>
-                    <div style={{ position: 'absolute', top: '2px', left: alarm.active ? '24px' : '2px', width: '20px', height: '20px', background: 'white', borderRadius: '50%', transition: 'all 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}></div>
+                    className="tablet-alarm-toggle"
+                    style={{ background: alarm.active ? (alarm.color || '#3b82f6') : '#e2e8f0' }}
+                    title={alarm.active ? "Alarm Active - Click to disable" : "Alarm Inactive - Click to enable"}
+                  >
+                    <div 
+                      className="tablet-alarm-toggle-thumb"
+                      style={{ left: alarm.active ? '25px' : '3px' }}
+                    />
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => {
+                </div>
+
+                <div className="tablet-alarm-card-bottom-row">
+                  <div className="tablet-alarm-sound-info">
+                    {alarm.music.startsWith('voice_') ? <Mic size={14} /> : <Music size={14} />} 
+                    <span>{ct('soundLabel')}: {alarm.music.startsWith('voice_') ? (voices.find(v => v.id === alarm.music)?.name || 'Human Voice') : alarm.music}</span>
+                  </div>
+                  <div className="tablet-alarm-btn-group">
+                    <button
+                      onClick={() => {
                         const event = new CustomEvent('medivault_test_alarm', { detail: alarm });
                         window.dispatchEvent(event);
-                    }} style={{ background: '#ecfdf5', border: '1px solid #d1fae5', cursor: 'pointer', color: '#10b981', padding: '0.5rem', borderRadius: '0.5rem', transition: 'all 0.2s' }} title={ct('testSound')}><Play size={16}/></button>
-                    <button onClick={() => handleEdit(alarm)} style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', cursor: 'pointer', color: 'var(--text-main)', padding: '0.5rem', borderRadius: '0.5rem', transition: 'all 0.2s' }}><Edit2 size={16}/></button>
-                    <button onClick={() => handleDelete(alarm.id)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', padding: '0.5rem', borderRadius: '0.5rem', transition: 'all 0.2s' }}><Trash2 size={16}/></button>
+                      }}
+                      className="tablet-alarm-btn-test-card"
+                      title="Test Medicine Reminder Popup"
+                    >
+                      <Bell size={14}/> Test
+                    </button>
+                    <button onClick={() => handleEdit(alarm)} className="tablet-alarm-icon-btn edit" title="Edit"><Edit2 size={15}/></button>
+                    <button onClick={() => handleDelete(alarm.id)} className="tablet-alarm-icon-btn del" title="Delete"><Trash2 size={15}/></button>
                   </div>
                 </div>
               </div>
@@ -787,7 +775,7 @@ export default function TabletAlarm({ user }) {
         </div>
 
         {/* Dynamic Right Side: Add Form, Record Audio, Volume */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        <div className="tablet-alarm-side-panel">
           
           {/* Volume Control Card */}
           <div className="card" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
