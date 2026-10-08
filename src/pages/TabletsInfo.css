@@ -1,0 +1,606 @@
+/* =====================================================
+   TABLETS INFO — MODERN FLAT MEDICAL DESIGN
+   Fully Responsive & Mobile-Optimized (No Overflow)
+   ===================================================== */
+
+.ti-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1.75rem;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── Header Card (Flatter & Sleek) ── */
+.ti-header-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+[data-theme='dark'] .ti-header-card {
+  background: #121c2d;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.ti-header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ti-back-btn {
+  background: var(--surface, #ffffff);
+  color: #0284c7;
+  border: 1px solid var(--border, #e2e8f0);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 0.65rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+[data-theme='dark'] .ti-back-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #38bdf8;
+}
+
+.ti-back-btn:hover {
+  background: var(--bg-subtle, #f1f5f9);
+  transform: translateY(-1px);
+}
+
+.ti-header-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.ti-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.ti-title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ti-title-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main, #0f172a);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* ── Header Controls (Search & Add) ── */
+.ti-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ti-search-wrap {
+  position: relative;
+  min-width: 220px;
+}
+
+.ti-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0ea5e9;
+  pointer-events: none;
+}
+
+.ti-search-input {
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.4rem;
+  border-radius: 0.65rem;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--bg-color, #f8fafd);
+  color: var(--text-main, #0f172a);
+  font-size: 0.88rem;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .ti-search-input {
+  background: #090e18;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.ti-search-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.ti-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.25);
+}
+
+.ti-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35);
+}
+
+/* ── Filter Tabs ── */
+.ti-tabs {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.ti-tab-btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 0.6rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ti-tab-btn--all {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.ti-tab-btn--all.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.ti-tab-btn--important {
+  background: #fef3c7;
+  color: #b45309;
+}
+.ti-tab-btn--important.active {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+[data-theme='dark'] .ti-tab-btn--all {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+}
+[data-theme='dark'] .ti-tab-btn--all.active {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+[data-theme='dark'] .ti-tab-btn--important {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+[data-theme='dark'] .ti-tab-btn--important.active {
+  background: #f59e0b;
+  color: #ffffff;
+}
+
+/* ── Cards Grid ── */
+.ti-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Flatter Tablet Card ── */
+.ti-card {
+  border-radius: 1rem;
+  padding: 1.25rem;
+  position: relative;
+  border: 1px solid;
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.ti-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.ti-card-left-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.ti-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.85rem;
+  padding-left: 4px;
+}
+
+.ti-card-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ti-card-actions {
+  display: flex;
+  gap: 0.35rem;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+[data-theme='dark'] .ti-card-actions {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.ti-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s ease;
+}
+
+.ti-action-btn--edit { color: #d97706; }
+.ti-action-btn--edit:hover { background: rgba(217, 119, 6, 0.15); }
+.ti-action-btn--del { color: #dc2626; }
+.ti-action-btn--del:hover { background: rgba(220, 38, 38, 0.15); }
+
+.ti-card-body {
+  padding-left: 4px;
+}
+
+.ti-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.ti-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: 0;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.ti-card-disease-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.85rem;
+  border: 1px solid transparent;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ti-card-dosage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.85rem;
+  background: #ffffff;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 0.82rem;
+  box-sizing: border-box;
+}
+
+[data-theme='dark'] .ti-card-dosage-row {
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.ti-dosage-lbl {
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ti-dosage-val {
+  font-weight: 800;
+  color: var(--text-main, #0f172a);
+}
+
+[data-theme='dark'] .ti-dosage-val {
+  color: #f8fafc;
+}
+
+/* ── Modal (Flatter Design) ── */
+.ti-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.ti-modal-content {
+  background: var(--surface, #ffffff);
+  border-radius: 1.25rem;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: ti-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme='dark'] .ti-modal-content {
+  background: #121c2d;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes ti-pop {
+  from { opacity: 0; transform: scale(0.96) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ti-modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+[data-theme='dark'] .ti-modal-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.ti-modal-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main, #0f172a);
+}
+
+.ti-modal-close-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted, #64748b);
+  padding: 0.3rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ti-modal-close-btn:hover {
+  background: var(--bg-subtle, #f1f5f9);
+}
+
+.ti-modal-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+.ti-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.ti-form-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.ti-form-input {
+  width: 100%;
+  padding: 0.75rem 0.95rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--bg-color, #f8fafd);
+  color: var(--text-main, #0f172a);
+  font-size: 0.9rem;
+  font-weight: 500;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+[data-theme='dark'] .ti-form-input {
+  background: #090e18;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.ti-form-input:focus {
+  border-color: #0ea5e9;
+}
+
+.ti-modal-footer {
+  padding: 1rem 1.5rem 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.ti-btn-cancel {
+  padding: 0.65rem 1.15rem;
+  border-radius: 0.6rem;
+  background: var(--bg-subtle, #f1f5f9);
+  color: var(--text-muted, #64748b);
+  border: 1px solid var(--border, #e2e8f0);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+[data-theme='dark'] .ti-btn-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.ti-btn-save {
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.6rem;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+/* ── Mobile Breakpoints (≤ 768px) ── */
+@media (max-width: 768px) {
+  .ti-container {
+    padding: 0.85rem 0.75rem 3rem;
+  }
+
+  .ti-header-card {
+    padding: 1rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .ti-header-left {
+    justify-content: flex-start;
+    gap: 0.75rem;
+  }
+
+  .ti-header-divider {
+    display: none;
+  }
+
+  .ti-title-text {
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+
+  .ti-header-controls {
+    flex-direction: row;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .ti-search-wrap {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ti-search-input {
+    width: 100%;
+    padding: 0.6rem 0.75rem 0.6rem 2.2rem;
+    font-size: 0.82rem;
+  }
+
+  .ti-add-btn {
+    padding: 0.6rem 0.85rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .ti-tabs {
+    margin-bottom: 1rem;
+    gap: 0.4rem;
+  }
+
+  .ti-tab-btn {
+    padding: 0.45rem 0.85rem;
+    font-size: 0.78rem;
+  }
+
+  .ti-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .ti-card {
+    padding: 1rem;
+  }
+}

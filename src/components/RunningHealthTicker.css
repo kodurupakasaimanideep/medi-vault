@@ -1,0 +1,109 @@
+/* =====================================================
+   RUNNING HEALTH TICKER (TEXT TO RUN)
+   Sleek, Modern, Flat Marquee Ticker for Mobile & Desktop
+   ===================================================== */
+
+.mv-ticker-container {
+  width: 100%;
+  background: var(--surface, #ffffff);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  height: 38px;
+  z-index: 100;
+  box-sizing: border-box;
+}
+
+[data-theme='dark'] .mv-ticker-container {
+  background: #0f172a;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.mv-ticker-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  z-index: 2;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.08);
+}
+
+.mv-ticker-track-wrap {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  display: flex;
+  align-items: center;
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+}
+
+.mv-ticker-track {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: mv-ticker-scroll 28s linear infinite;
+  will-change: transform;
+}
+
+.mv-ticker-track:hover {
+  animation-play-state: paused;
+}
+
+.mv-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+  letter-spacing: 0.1px;
+}
+
+[data-theme='dark'] .mv-ticker-item {
+  color: #cbd5e1;
+}
+
+.mv-ticker-sep {
+  color: #0ea5e9;
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+@keyframes mv-ticker-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 768px) {
+  .mv-ticker-container {
+    height: 34px;
+  }
+  .mv-ticker-badge {
+    padding: 0 8px;
+    font-size: 0.65rem;
+  }
+  .mv-ticker-badge span {
+    display: none;
+  }
+  .mv-ticker-item {
+    font-size: 0.74rem;
+    padding: 0 16px;
+  }
+}

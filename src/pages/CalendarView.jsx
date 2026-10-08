@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Activity, Flame, Droplets, Dumbbell, Utensils, Trophy, Target, TrendingUp } from 'lucide-react';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import './CalendarView.css';
 
 // ── Read real activity data from localStorage ────────────────────────────────
 function readLS(key, fallback) {
@@ -481,26 +482,25 @@ export default function CalendarView({ user }) {
       dayElements.push(
         <div key={d}
           onClick={() => setSelectedDate(new Date(year, month, d))}
+          className="cal-day-cell"
           style={{
-            background: bg, border, borderRadius: '14px', color,
-            fontWeight: '800', fontSize: '0.95rem',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', gap: '3px', position: 'relative',
-            transition: 'all 0.25s cubic-bezier(0.4,0,0.2,1)',
-            cursor: status === 'future' ? 'default' : 'pointer',
-            boxShadow: shadow, minHeight: '72px',
-            opacity: status === 'future' ? 0.4 : 1
+            background: bg, 
+            border, 
+            color,
+            boxShadow: shadow,
+            opacity: status === 'future' ? 0.4 : 1,
+            cursor: status === 'future' ? 'default' : 'pointer'
           }}
-          onMouseOver={e => { if (status !== 'future') e.currentTarget.style.transform = 'translateY(-3px) scale(1.03)'; }}
+          onMouseOver={e => { if (status !== 'future') e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; }}
           onMouseOut={e => e.currentTarget.style.transform = 'translateY(0) scale(1)'}
         >
-          <span style={{ fontSize: '0.9rem' }}>{d}</span>
-          {emoji && <span style={{ fontSize: '0.75rem', lineHeight: 1 }}>{emoji}</span>}
+          <span style={{ fontSize: '0.88rem' }}>{d}</span>
+          {emoji && <span style={{ fontSize: '0.72rem', lineHeight: 1 }}>{emoji}</span>}
           {status === 'streak' && (
             <div style={{ display: 'flex', gap: '2px' }}>
-              {entry.water && <span style={{ fontSize: '0.55rem' }}>💧</span>}
-              {entry.yoga  && <span style={{ fontSize: '0.55rem' }}>🧘</span>}
-              {entry.diet  && <span style={{ fontSize: '0.55rem' }}>🥗</span>}
+              {entry.water && <span style={{ fontSize: '0.52rem' }}>💧</span>}
+              {entry.yoga  && <span style={{ fontSize: '0.52rem' }}>🧘</span>}
+              {entry.diet  && <span style={{ fontSize: '0.52rem' }}>🥗</span>}
             </div>
           )}
         </div>
@@ -516,78 +516,82 @@ export default function CalendarView({ user }) {
   const pct = n => monthStats.pastDays > 0 ? Math.round((n / monthStats.pastDays) * 100) : 0;
 
   return (
-    <div style={{ padding: '1.5rem 2rem 4rem', background: 'linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%)', minHeight: '100vh' }}>
+    <div className="cal-page-container animate-fade-in">
 
-      {/* ── Total Score Banner ──────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0ea5e9 100%)',
-        borderRadius: '24px', padding: '2rem 2.5rem', marginBottom: '1.5rem',
-        color: 'white', boxShadow: '0 20px 50px -10px rgba(79,70,229,0.4)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem'
-      }}>
+      {/* ── Flatter Total Score Hero Banner ─────────────────────────────────── */}
+      <div className="cal-hero-banner">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <CalendarIcon size={32} />
-            <h1 style={{ fontSize: '2rem', fontWeight: '900', margin: 0, letterSpacing: '-0.5px' }}>{ct('title')}</h1>
+          <div className="cal-hero-title-group">
+            <CalendarIcon size={28} />
+            <h1 className="cal-hero-title">{ct('title')}</h1>
           </div>
-          <p style={{ opacity: 0.85, margin: 0, fontSize: '0.95rem' }}>
+          <p className="cal-hero-subtitle">
             {ct('subtitle')}
           </p>
         </div>
 
         {/* Stat chips */}
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem 1.5rem', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <div style={{ fontSize: '2rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Flame size={24} color="#fbbf24" /> {currentStreak}</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px' }}>{ct('curStreak')}</div>
+        <div className="cal-hero-chips">
+          <div className="cal-hero-chip">
+            <div className="cal-chip-val"><Flame size={20} color="#fbbf24" /> {currentStreak}</div>
+            <div className="cal-chip-lbl">{ct('curStreak')}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem 1.5rem', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <div style={{ fontSize: '2rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Trophy size={24} color="#fbbf24" /> {totalScore}</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px' }}>{ct('totScore')}</div>
+          <div className="cal-hero-chip">
+            <div className="cal-chip-val"><Trophy size={20} color="#fbbf24" /> {totalScore}</div>
+            <div className="cal-chip-lbl">{ct('totScore')}</div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '1rem 1.5rem', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
-            <div style={{ fontSize: '2rem', fontWeight: '900', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>🧘 {yogaStreakLS}</div>
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', opacity: 0.85, textTransform: 'uppercase', letterSpacing: '1px' }}>{ct('yogaStreak')}</div>
+          <div className="cal-hero-chip">
+            <div className="cal-chip-val">🧘 {yogaStreakLS}</div>
+            <div className="cal-chip-lbl">{ct('yogaStreak')}</div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem', alignItems: 'start' }}>
+      {/* ── Main Layout: Responsive Grid (1 col on mobile, 2 col on desktop) ── */}
+      <div className="cal-main-grid">
 
         {/* ── Calendar Card ───────────────────────────────────────────── */}
-        <div style={{ background: 'white', borderRadius: '24px', border: '1px solid #e8ecf5', boxShadow: '0 8px 32px rgba(79,70,229,0.06)', overflow: 'hidden' }}>
+        <div className="cal-card">
           {/* Month nav */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9' }}>
-            <button onClick={prevMonth} style={{ background: 'rgba(79,70,229,0.08)', border: 'none', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: '#4f46e5', transition: 'all 0.2s', display: 'flex' }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(79,70,229,0.15)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(79,70,229,0.08)'}
-            ><ChevronLeft size={22} /></button>
-            <h2 style={{ fontSize: '1.6rem', fontWeight: '900', color: '#1e1b4b', margin: 0 }}>
-              {(localMonths[lang] || localMonths['en'])[month]} <span style={{ color: '#94a3b8', fontWeight: '600' }}>{year}</span>
+          <div className="cal-nav-bar">
+            <button 
+              type="button"
+              className="cal-nav-btn"
+              onClick={prevMonth} 
+              aria-label="Previous Month"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="cal-month-title">
+              {(localMonths[lang] || localMonths['en'])[month]} <span>{year}</span>
             </h2>
-            <button onClick={nextMonth} style={{ background: 'rgba(79,70,229,0.08)', border: 'none', padding: '10px', borderRadius: '12px', cursor: 'pointer', color: '#4f46e5', transition: 'all 0.2s', display: 'flex' }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(79,70,229,0.15)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(79,70,229,0.08)'}
-            ><ChevronRight size={22} /></button>
+            <button 
+              type="button"
+              className="cal-nav-btn"
+              onClick={nextMonth}
+              aria-label="Next Month"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
 
-          <div style={{ padding: '1.5rem 2rem 2rem' }}>
+          <div className="cal-grid-wrap">
             {/* Day headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            <div className="cal-weekdays-row">
               {(localWeekdays[lang] || localWeekdays['en']).map(d => (
-                <div key={d} style={{ textAlign: 'center', fontWeight: '800', color: '#94a3b8', fontSize: '0.72rem', letterSpacing: '0.5px' }}>{d}</div>
+                <div key={d} className="cal-weekday-lbl">{d}</div>
               ))}
             </div>
 
             {/* Day grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '0.5rem' }}>
+            <div className="cal-days-grid">
               {renderDays()}
             </div>
 
             {/* Legend */}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'center', flexWrap: 'wrap', padding: '1rem', background: '#f8fafc', borderRadius: '14px' }}>
+            <div className="cal-legend-row">
               {[['🔥', ct('legendPerfect')], ['⚡', ct('legendPartial')], ['💔', ct('legendMissed')], ['⭐', ct('legendToday')]].map(([sym, lbl]) => (
-                <div key={lbl} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', fontWeight: '700', color: '#475569' }}>
+                <div key={lbl} className="cal-legend-item">
                   <span>{sym}</span>{lbl}
                 </div>
               ))}
@@ -595,39 +599,39 @@ export default function CalendarView({ user }) {
           </div>
         </div>
 
-        {/* ── Right Panel ────────────────────────────────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* ── Right Panel: Day Detail & Monthly Progress ── */}
+        <div className="cal-side-col">
 
           {/* Selected Day Detail */}
-          <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #e8ecf5', boxShadow: '0 6px 24px rgba(79,70,229,0.06)', padding: '1.5rem' }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e1b4b', margin: '0 0 0.25rem 0' }}>
+          <div className="cal-side-card">
+            <h3 className="cal-side-card-title">
               {selectedDate.toLocaleDateString(lang === 'eu' ? 'es-ES' : lang, { weekday: 'long', month: 'long', day: 'numeric' })}
             </h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#94a3b8', fontSize: '0.8rem', fontWeight: '600' }}>
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted, #94a3b8)', fontSize: '0.8rem', fontWeight: '600' }}>
               {ct('scoreText')}: {getDayScore(selEntry)}/3 {ct('pts')}
             </p>
 
             {selStatus === 'future' ? (
               <div style={{ textAlign: 'center', color: '#cbd5e1', padding: '1rem 0' }}>
-                <CalendarIcon size={36} style={{ opacity: 0.3, margin: '0 auto 0.5rem', display: 'block' }} />
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>{ct('noDataFuture')}</p>
+                <CalendarIcon size={32} style={{ opacity: 0.3, margin: '0 auto 0.5rem', display: 'block' }} />
+                <p style={{ margin: 0, fontSize: '0.82rem' }}>{ct('noDataFuture')}</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {[
-                  { icon: <Droplets size={18} color="white" />, label: ct('waterIntake'), bg: '#0ea5e9', done: selEntry.water, detail: selEntry.waterMl ? `${(selEntry.waterMl/1000).toFixed(1)}L / ${(waterTarget/1000).toFixed(1)}L` : selEntry.water ? ct('goalMet') : ct('notTracked') },
-                  { icon: <Dumbbell size={18} color="white" />, label: ct('yogaEx'), bg: '#8b5cf6', done: selEntry.yoga, detail: selEntry.yoga ? ct('sessionDone') : ct('noSession') },
-                  { icon: <Utensils size={18} color="white" />, label: ct('dietPlan'), bg: '#f59e0b', done: selEntry.diet, detail: selEntry.diet ? ct('dietTracked') : ct('notLogged') }
+                  { icon: <Droplets size={16} color="white" />, label: ct('waterIntake'), bg: '#0ea5e9', done: selEntry.water, detail: selEntry.waterMl ? `${(selEntry.waterMl/1000).toFixed(1)}L / ${(waterTarget/1000).toFixed(1)}L` : selEntry.water ? ct('goalMet') : ct('notTracked') },
+                  { icon: <Dumbbell size={16} color="white" />, label: ct('yogaEx'), bg: '#8b5cf6', done: selEntry.yoga, detail: selEntry.yoga ? ct('sessionDone') : ct('noSession') },
+                  { icon: <Utensils size={16} color="white" />, label: ct('dietPlan'), bg: '#f59e0b', done: selEntry.diet, detail: selEntry.diet ? ct('dietTracked') : ct('notLogged') }
                 ].map(({ icon, label, bg, done, detail }) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem', background: done ? 'rgba(16,185,129,0.05)' : '#fafafa', borderRadius: '12px', border: `1px solid ${done ? 'rgba(16,185,129,0.2)' : '#f1f5f9'}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ background: bg, padding: '8px', borderRadius: '10px', display: 'flex' }}>{icon}</div>
+                  <div key={label} className="cal-habit-row">
+                    <div className="cal-habit-left">
+                      <div className="cal-habit-icon-wrap" style={{ background: bg }}>{icon}</div>
                       <div>
-                        <div style={{ fontWeight: '700', color: '#334155', fontSize: '0.88rem' }}>{label}</div>
-                        <div style={{ color: '#94a3b8', fontSize: '0.75rem' }}>{detail}</div>
+                        <div style={{ fontWeight: '700', color: 'var(--text-main, #334155)', fontSize: '0.85rem' }}>{label}</div>
+                        <div style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.72rem' }}>{detail}</div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '1.2rem' }}>{done ? '✅' : '❌'}</span>
+                    <span style={{ fontSize: '1.1rem' }}>{done ? '✅' : '❌'}</span>
                   </div>
                 ))}
               </div>
@@ -635,10 +639,10 @@ export default function CalendarView({ user }) {
           </div>
 
           {/* Monthly Analysis */}
-          <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #e8ecf5', boxShadow: '0 6px 24px rgba(79,70,229,0.06)', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-              <TrendingUp size={20} color="#4f46e5" />
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: '800', color: '#1e1b4b' }}>{ct('monthlyAnalysis')} — {(localMonths[lang] || localMonths['en'])[month]}</h3>
+          <div className="cal-side-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+              <TrendingUp size={18} color="#4f46e5" />
+              <h3 className="cal-side-card-title" style={{ margin: 0 }}>{ct('monthlyAnalysis')} — {(localMonths[lang] || localMonths['en'])[month]}</h3>
             </div>
 
             {[
@@ -647,41 +651,41 @@ export default function CalendarView({ user }) {
               { label: ct('dietTrackedLbl'), value: monthStats.dietDone, color: '#f59e0b', icon: '🥗' },
               { label: ct('perfectDays'), value: monthStats.allDone, color: '#10b981', icon: '🏆' },
             ].map(({ label, value, color, icon }) => (
-              <div key={label} style={{ marginBottom: '0.9rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', fontWeight: '700', color: '#475569', marginBottom: '5px' }}>
+              <div key={label} style={{ marginBottom: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted, #475569)', marginBottom: '4px' }}>
                   <span>{icon} {label}</span>
                   <span style={{ color }}>{value}/{monthStats.pastDays} days ({pct(value)}%)</span>
                 </div>
-                <div style={{ background: '#f1f5f9', borderRadius: '8px', height: '8px', overflow: 'hidden' }}>
-                  <div style={{ width: `${pct(value)}%`, height: '100%', background: color, borderRadius: '8px', transition: 'width 0.8s ease' }} />
+                <div style={{ background: 'var(--bg-subtle, #f1f5f9)', borderRadius: '6px', height: '7px', overflow: 'hidden' }}>
+                  <div style={{ width: `${pct(value)}%`, height: '100%', background: color, borderRadius: '6px', transition: 'width 0.8s ease' }} />
                 </div>
               </div>
             ))}
 
-            <div style={{ marginTop: '1rem', padding: '0.85rem', background: 'linear-gradient(135deg, rgba(79,70,229,0.08), rgba(124,58,237,0.05))', borderRadius: '12px', border: '1px solid rgba(79,70,229,0.12)', textAlign: 'center' }}>
-              <span style={{ fontSize: '0.88rem', fontWeight: '700', color: '#4f46e5' }}>
+            <div style={{ marginTop: '0.85rem', padding: '0.75rem', background: 'rgba(79,70,229,0.06)', borderRadius: '10px', border: '1px solid rgba(79,70,229,0.12)', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: '700', color: '#4f46e5' }}>
                 {ct('adherence')}: <strong>{pct(monthStats.allDone)}%</strong> {ct('perfect')} — {monthStats.allDone >= 20 ? `🏅 ${ct('excellent')}` : monthStats.allDone >= 10 ? `👍 ${ct('good')}` : `💪 ${ct('keepGoing')}`}
               </span>
             </div>
           </div>
 
           {/* Score breakdown */}
-          <div style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '20px', padding: '1.25rem 1.5rem', color: 'white' }}>
+          <div style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', borderRadius: '1.25rem', padding: '1.25rem', color: 'white', boxShadow: '0 4px 16px rgba(79, 70, 229, 0.2)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
               <Trophy size={18} />
-              <span style={{ fontWeight: '800', fontSize: '0.95rem' }}>{ct('breakdown')}</span>
+              <span style={{ fontWeight: '800', fontSize: '0.92rem' }}>{ct('breakdown')}</span>
             </div>
             {[
               { label: ct('yogaPts'), icon: '🧘', val: Object.values(activityMap).filter(e=>e?.yoga).length },
               { label: ct('waterPts'), icon: '💧', val: Object.values(activityMap).filter(e=>e?.water).length },
               { label: ct('dietPts'), icon: '🥗', val: Object.values(activityMap).filter(e=>e?.diet).length },
             ].map(({label, icon, val}) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.1)', fontSize: '0.85rem', fontWeight: '600' }}>
-                <span style={{ opacity: 0.85 }}>{icon} {label}</span>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.12)', fontSize: '0.82rem', fontWeight: '600' }}>
+                <span style={{ opacity: 0.9 }}>{icon} {label}</span>
                 <span style={{ fontWeight: '900' }}>{val} pts</span>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0 0', fontSize: '1rem', fontWeight: '900' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.55rem 0 0', fontSize: '0.95rem', fontWeight: '900' }}>
               <span>{ct('grandTotal')}</span>
               <span>{totalScore} pts</span>
             </div>
@@ -697,7 +701,6 @@ export default function CalendarView({ user }) {
         what={ct('aboutWhat')}
         howToUse={ct('aboutHow')}
         importance={ct('aboutWhy')}
-        style={{ position: 'absolute', bottom: '2rem', right: '2rem', top: 'auto' }}
       />
     </div>
   );

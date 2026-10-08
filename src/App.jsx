@@ -45,6 +45,7 @@ import TemperatureMonitor from './pages/TemperatureMonitor';
 // Global Alarm Manager
 import AlarmManager from './components/AlarmManager';
 import NotificationPrompt from './components/NotificationPrompt';
+import RunningHealthTicker from './components/RunningHealthTicker';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inner app shell — knows about routes and auth state
@@ -331,6 +332,7 @@ function AppShell({ theme, toggleTheme }) {
           toggleSleepMode={toggleSleepMode} 
         />
         <div className="app-shell">
+          <RunningHealthTicker />
           {/* Floating Sleep Mode Banner */}
           {isSleepActive && (
             <div className="sleep-banner" style={{

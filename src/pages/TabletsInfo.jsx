@@ -3,6 +3,7 @@ import { Pill, Trash2, Edit3, Plus, Search, ChevronLeft, X, Save, Activity, Drop
 import { useNavigate } from 'react-router-dom';
 import SectionAbout from '../components/SectionAbout';
 import { useLanguage } from '../contexts/LanguageContext';
+import './TabletsInfo.css';
 
 const DEFAULT_TABLETS = [
   { id: '1', name: 'Paracetamol', disease: 'Headache / Fever', dosage: '500mg', important: false },
@@ -328,160 +329,128 @@ export default function TabletsInfo({ user }) {
   );
 
   return (
-    <div className="container animate-fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: "'Inter', sans-serif" }}>
+    <div className="ti-container animate-fade-in">
       
-      {/* Header section with back button */}
-      <div style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem', 
-        background: 'var(--surface)', padding: '1.5rem 2rem', borderRadius: '1.25rem', 
-        boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)', 
-        border: '2px solid var(--border)',
-        borderImage: 'linear-gradient(to right, #0ea5e9, #6366f1) 1',
-        position: 'relative'
-      }}>
-        {/* Border gradient effect */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: '1.25rem', pointerEvents: 'none', background: 'linear-gradient(to right, #0ea5e9, #6366f1)', zIndex: -1, padding: '2px', mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)', maskComposite: 'exclude', WebkitMaskComposite: 'xor' }}></div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      {/* ── Flatter & Responsive Header Card ── */}
+      <div className="ti-header-card">
+        <div className="ti-header-left">
           <button 
+            type="button"
+            className="ti-back-btn"
             onClick={() => navigate('/dashboard')}
-            style={{ 
-              background: 'var(--surface)', color: '#0ea5e9', border: '1px solid var(--border)', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', 
-              borderRadius: '0.75rem', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s',
-              boxShadow: '0 2px 5px rgba(14, 165, 233, 0.05)'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 12px rgba(14, 165, 233, 0.1)'; e.currentTarget.style.background = 'var(--bg-color)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 5px rgba(14, 165, 233, 0.05)'; e.currentTarget.style.background = 'var(--surface)'; }}
           >
-            <ChevronLeft size={18} /> {ct('dashboard')}
+            <ChevronLeft size={16} /> {ct('dashboard')}
           </button>
-          <div style={{ width: '2px', height: '30px', background: '#e0f2fe' }}></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)', padding: '0.5rem', borderRadius: '0.75rem', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(14, 165, 233, 0.3)' }}>
-               <Pill size={24} />
+          
+          <div className="ti-header-divider" />
+          
+          <div className="ti-title-group">
+            <div className="ti-title-icon">
+              <Pill size={20} />
             </div>
-            <h1 style={{ fontSize: '2.2rem', color: '#0f172a', fontWeight: '800', margin: 0, letterSpacing: '-0.5px' }}>
+            <h1 className="ti-title-text">
               {ct('title')}
             </h1>
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={20} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#0ea5e9' }} />
+        <div className="ti-header-controls">
+          <div className="ti-search-wrap">
+            <Search size={18} className="ti-search-icon" />
             <input 
               type="text" 
+              className="ti-search-input"
               placeholder={ct('searchPl')} 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                padding: '0.8rem 1rem 0.8rem 2.8rem',
-                borderRadius: '0.75rem',
-                border: '1px solid var(--border)',
-                background: 'var(--surface)',
-                color: 'var(--text-main)',
-                width: '280px',
-                fontSize: '0.95rem',
-                fontWeight: '500',
-                transition: 'all 0.3s ease',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)'
-              }}
-              onFocus={(e) => { e.currentTarget.style.borderColor = '#0ea5e9'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.15)'; e.currentTarget.style.outline = 'none'; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)'; }}
             />
           </div>
           <button 
+            type="button"
+            className="ti-add-btn"
             onClick={openAdd}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.5rem', 
-              borderRadius: '0.75rem', background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)', 
-              color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem',
-              boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14, 165, 233, 0.4)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(14, 165, 233, 0.3)'; }}
           >
-            <Plus size={20}/> {ct('addTablet')}
+            <Plus size={18} /> {ct('addTablet')}
           </button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', marginTop: '-1rem' }}>
+      {/* ── Filter Tabs ── */}
+      <div className="ti-tabs">
         <button 
+          type="button"
           onClick={() => setActiveTab('all')}
-          style={{ padding: '0.8rem 1.5rem', borderRadius: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: activeTab === 'all' ? '#0ea5e9' : '#e0f2fe', color: activeTab === 'all' ? 'white' : '#0ea5e9' }}
+          className={`ti-tab-btn ti-tab-btn--all ${activeTab === 'all' ? 'active' : ''}`}
         >
           {ct('allTabs')}
         </button>
         <button 
+          type="button"
           onClick={() => setActiveTab('important')}
-          style={{ padding: '0.8rem 1.5rem', borderRadius: '0.75rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem', background: activeTab === 'important' ? '#f59e0b' : '#fef3c7', color: activeTab === 'important' ? 'white' : '#d97706' }}
+          className={`ti-tab-btn ti-tab-btn--important ${activeTab === 'important' ? 'active' : ''}`}
         >
-          <Star size={16} fill={activeTab === 'important' ? "white" : "none"} /> {ct('importantTabs')}
+          <Star size={15} fill={activeTab === 'important' ? "currentColor" : "none"} /> {ct('importantTabs')}
         </button>
       </div>
 
-      {/* Grid view of records */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+      {/* ── Flatter Tablets Grid ── */}
+      <div className="ti-grid">
         {filteredTablets.map(tab => {
           const cardStyle = getTabletStyle(tab.name, tab.id);
           return (
-            <div key={tab.id} className="card animate-fade-in" style={{
-              background: cardStyle.bg,
-              borderRadius: '1.25rem',
-              padding: '1.5rem',
-              position: 'relative',
-              boxShadow: '0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(99, 102, 241, 0.05)',
-              border: `1.5px solid ${cardStyle.border}`,
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              overflow: 'hidden'
-            }}
-            onMouseOver={(e) => { 
-              e.currentTarget.style.transform = 'translateY(-5px)'; 
-              e.currentTarget.style.boxShadow = `0 15px 30px ${cardStyle.iconColor}22`; 
-              e.currentTarget.style.borderColor = cardStyle.iconColor; 
-            }}
-            onMouseOut={(e) => { 
-              e.currentTarget.style.transform = 'translateY(0)'; 
-              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.02), 0 10px 15px -3px rgba(99, 102, 241, 0.05)'; 
-              e.currentTarget.style.borderColor = cardStyle.border; 
-            }}
+            <div 
+              key={tab.id} 
+              className="ti-card animate-fade-in" 
+              style={{
+                background: cardStyle.bg,
+                borderColor: cardStyle.border,
+              }}
             >
-              {/* Unique Colorful Left Border mapping the theme */}
-              <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '6px', background: cardStyle.leftBorder }}></div>
+              {/* Colorful Left Accent Line */}
+              <div className="ti-card-left-bar" style={{ background: cardStyle.leftBorder }} />
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', paddingLeft: '8px' }}>
-                <div style={{ background: cardStyle.iconBg, padding: '0.8rem', borderRadius: '1rem', color: cardStyle.iconColor, display: 'flex', alignItems: 'center' }}>
-                  <Pill size={28} />
+              <div className="ti-card-top">
+                <div className="ti-card-icon-wrap" style={{ background: cardStyle.iconBg, color: cardStyle.iconColor }}>
+                  <Pill size={22} />
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem', background: '#f8fafc', padding: '0.3rem', borderRadius: '0.75rem', border: '1px solid #f1f5f9' }}>
-                  <button onClick={() => openEdit(tab)} style={{ background: 'transparent', border: 'none', color: '#f59e0b', cursor: 'pointer', padding: '0.4rem', borderRadius: '0.5rem', transition: 'background 0.2s' }} onMouseOver={e=>e.currentTarget.style.background='#fef3c7'} onMouseOut={e=>e.currentTarget.style.background='transparent'} title="Edit Tablet">
-                    <Edit3 size={18} />
+                <div className="ti-card-actions">
+                  <button 
+                    type="button"
+                    onClick={() => openEdit(tab)} 
+                    className="ti-action-btn ti-action-btn--edit"
+                    title="Edit Tablet"
+                  >
+                    <Edit3 size={16} />
                   </button>
-                  <button onClick={() => handleDelete(tab.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.4rem', borderRadius: '0.5rem', transition: 'background 0.2s' }} onMouseOver={e=>e.currentTarget.style.background='#fee2e2'} onMouseOut={e=>e.currentTarget.style.background='transparent'} title="Delete Tablet">
-                    <Trash2 size={18} />
+                  <button 
+                    type="button"
+                    onClick={() => handleDelete(tab.id)} 
+                    className="ti-action-btn ti-action-btn--del"
+                    title="Delete Tablet"
+                  >
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
 
-              <div style={{ paddingLeft: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: cardStyle.color }}>{tab.name}</h3>
-                  {tab.important && <Star size={20} color="#f59e0b" fill="#f59e0b" style={{ marginTop: '4px' }} />}
+              <div className="ti-card-body">
+                <div className="ti-card-title-row">
+                  <h3 className="ti-card-title" style={{ color: cardStyle.color }}>{tab.name}</h3>
+                  {tab.important && <Star size={18} color="#f59e0b" fill="#f59e0b" />}
                 </div>
                 
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.8rem', background: cardStyle.iconBg, border: `1px solid ${cardStyle.border}`, color: cardStyle.color, borderRadius: '0.5rem', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.8rem' }}>
-                  <Activity size={14} /> {tab.disease}
+                <div 
+                  className="ti-card-disease-pill"
+                  style={{ background: cardStyle.iconBg, color: cardStyle.color, borderColor: cardStyle.border }}
+                >
+                  <Activity size={13} /> {tab.disease}
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', background: '#ffffff', borderRadius: '0.75rem', border: `1px solid ${cardStyle.border}`, marginTop: '0.5rem' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Droplet size={14} color={cardStyle.iconColor}/> {ct('dosageLabel')}
+                <div className="ti-card-dosage-row">
+                  <span className="ti-dosage-lbl">
+                    <Droplet size={13} color={cardStyle.iconColor} /> {ct('dosageLabel')}
                   </span>
-                  <span style={{ fontSize: '1rem', color: cardStyle.iconColor, fontWeight: '800' }}>
+                  <span className="ti-dosage-val" style={{ color: cardStyle.iconColor }}>
                     {tab.dosage}
                   </span>
                 </div>
@@ -491,17 +460,17 @@ export default function TabletsInfo({ user }) {
         })}
         
         {filteredTablets.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem 2rem', background: '#ffffff', borderRadius: '1.5rem', border: '2px dashed #bae6fd', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)' }}>
-            <div style={{ width: '80px', height: '80px', background: '#e0f2fe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <Pill size={40} style={{ color: '#0ea5e9' }} />
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3.5rem 1.5rem', background: 'var(--surface)', borderRadius: '1rem', border: '1px dashed var(--border)' }}>
+            <div style={{ width: '64px', height: '64px', background: 'var(--bg-subtle)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto' }}>
+              <Pill size={32} style={{ color: '#0ea5e9' }} />
             </div>
-            <h3 style={{ color: '#0f172a', fontSize: '1.5rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>{ct('noRecords')}</h3>
-            <p style={{ color: '#64748b', fontSize: '1.1rem', maxWidth: '400px', margin: '0 auto 2rem auto' }}>{ct('noRecordsDesc')}</p>
+            <h3 style={{ color: 'var(--text-main)', fontSize: '1.25rem', marginBottom: '0.35rem', fontWeight: 'bold' }}>{ct('noRecords')}</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '380px', margin: '0 auto 1.5rem auto' }}>{ct('noRecordsDesc')}</p>
             <button 
+              type="button"
               onClick={openAdd}
-              style={{ padding: '1rem 2.5rem', borderRadius: '0.75rem', background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)', transition: 'all 0.2s' }}
-              onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'}
-              onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}
+              className="ti-add-btn"
+              style={{ margin: '0 auto' }}
             >
               {ct('addNewMedicine')}
             </button>
@@ -509,85 +478,62 @@ export default function TabletsInfo({ user }) {
         )}
       </div>
 
-      {/* Modern Medical Modal Overlay */}
+      {/* ── Flatter Modal Dialog ── */}
       {isModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '1rem', animation: 'fadeIn 0.2s ease-out'
-        }}>
-          <div style={{
-            background: 'var(--surface)', borderRadius: '1.5rem', padding: '0',
-            width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1)',
-            overflow: 'hidden', display: 'flex', flexDirection: 'column', 
-            position: 'relative'
-          }} className="animate-scale-in">
-            {/* Top Border Gradient Header */}
-            <div style={{ height: '6px', background: 'linear-gradient(to right, #0ea5e9, #4f46e5, #ec4899)' }}></div>
-
-            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e0f2fe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.5rem', margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.8rem', fontWeight: 'bold' }}>
-                <div style={{ padding: '0.5rem', background: '#e0f2fe', borderRadius: '0.5rem', color: '#0ea5e9', }}>
-                  {isEditing ? <Edit3 size={24} /> : <Plus size={24} />}
-                </div>
+        <div className="ti-modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div className="ti-modal-content" onClick={e => e.stopPropagation()}>
+            <div className="ti-modal-header">
+              <h2 className="ti-modal-title">
                 {isEditing ? ct('updateMed') : ct('logNew')}
               </h2>
               <button 
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-                onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#fecaca'; }}
-                onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                className="ti-modal-close-btn"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ padding: '2rem' }}>
-              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.6rem', color: 'var(--text-main)', fontWeight: '700', fontSize: '0.95rem' }}>{ct('nameLabel')}</label>
-                  <div style={{ position: 'relative' }}>
-                    <Pill size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#0ea5e9' }}/>
-                    <input 
-                      type="text" required value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      placeholder={ct('namePl')}
-                      style={{ width: '100%', padding: '0.9rem 1rem 0.9rem 2.8rem', borderRadius: '0.75rem', border: '2px solid #e2e8f0', background: '#f8fafc', color: '#1e293b', fontSize: '1rem', transition: 'all 0.2s', fontWeight: '500' }}
-                      onFocus={(e) => { e.target.style.borderColor = '#0ea5e9'; e.target.style.background = '#ffffff'; e.target.style.boxShadow = '0 0 0 3px rgba(14, 165, 233, 0.1)'; e.target.style.outline = 'none'; }} 
-                      onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; e.target.style.boxShadow = 'none'; }}
-                    />
-                  </div>
+            <form onSubmit={handleSave}>
+              <div className="ti-modal-body">
+                <div className="ti-form-group">
+                  <label className="ti-form-label">{ct('nameLabel')}</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.name} 
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    placeholder={ct('namePl')}
+                    className="ti-form-input"
+                  />
                 </div>
 
-                <div>
-                   <label style={{ display: 'block', marginBottom: '0.6rem', color: '#1e293b', fontWeight: '700', fontSize: '0.95rem' }}>{ct('diseaseLabel')}</label>
-                   <div style={{ position: 'relative' }}>
-                      <Activity size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#c026d3' }}/>
-                      <input 
-                        type="text" required value={formData.disease} onChange={(e) => setFormData({...formData, disease: e.target.value})}
-                        placeholder={ct('diseasePl')}
-                        style={{ width: '100%', padding: '0.9rem 1rem 0.9rem 2.8rem', borderRadius: '0.75rem', border: '2px solid #e2e8f0', background: '#f8fafc', color: '#1e293b', fontSize: '1rem', transition: 'all 0.2s', fontWeight: '500' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#c026d3'; e.target.style.background = '#ffffff'; e.target.style.boxShadow = '0 0 0 3px rgba(192, 38, 211, 0.1)'; e.target.style.outline = 'none'; }} 
-                        onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; e.target.style.boxShadow = 'none'; }}
-                      />
-                   </div>
+                <div className="ti-form-group">
+                  <label className="ti-form-label">{ct('diseaseLabel')}</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.disease} 
+                    onChange={(e) => setFormData({...formData, disease: e.target.value})}
+                    placeholder={ct('diseasePl')}
+                    className="ti-form-input"
+                  />
                 </div>
 
-                <div>
-                   <label style={{ display: 'block', marginBottom: '0.6rem', color: '#1e293b', fontWeight: '700', fontSize: '0.95rem' }}>{ct('dosageModalLabel')}</label>
-                   <div style={{ position: 'relative' }}>
-                      <Droplet size={18} style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#4f46e5' }}/>
-                      <input 
-                        type="text" required value={formData.dosage} onChange={(e) => setFormData({...formData, dosage: e.target.value})}
-                        placeholder={ct('dosageModalPl')}
-                        style={{ width: '100%', padding: '0.9rem 1rem 0.9rem 2.8rem', borderRadius: '0.75rem', border: '2px solid #e2e8f0', background: '#f8fafc', color: '#1e293b', fontSize: '1rem', transition: 'all 0.2s', fontWeight: '500' }}
-                        onFocus={(e) => { e.target.style.borderColor = '#4f46e5'; e.target.style.background = '#ffffff'; e.target.style.boxShadow = '0 0 0 3px rgba(79, 70, 229, 0.1)'; e.target.style.outline = 'none'; }} 
-                        onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; e.target.style.boxShadow = 'none'; }}
-                      />
-                   </div>
+                <div className="ti-form-group">
+                  <label className="ti-form-label">{ct('dosageModalLabel')}</label>
+                  <input 
+                    type="text" 
+                    required 
+                    value={formData.dosage} 
+                    onChange={(e) => setFormData({...formData, dosage: e.target.value})}
+                    placeholder={ct('dosageModalPl')}
+                    className="ti-form-input"
+                  />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginTop: '0.25rem' }}>
                   <input 
                     type="checkbox" 
                     id="importantCb"
@@ -595,31 +541,29 @@ export default function TabletsInfo({ user }) {
                     onChange={(e) => setFormData({...formData, important: e.target.checked})}
                     style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f59e0b' }}
                   />
-                  <label htmlFor="importantCb" style={{ color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Star size={18} color="#f59e0b" fill={formData.important ? "#f59e0b" : "none"} /> {ct('markImportant')}
+                  <label htmlFor="importantCb" style={{ color: 'var(--text-main)', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.88rem' }}>
+                    <Star size={16} color="#f59e0b" fill={formData.important ? "#f59e0b" : "none"} /> {ct('markImportant')}
                   </label>
                 </div>
+              </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem', paddingTop: '1.5rem', borderTop: '1px solid #e2e8f0' }}>
-                  <button 
-                    type="button" 
-                    onClick={() => setIsModalOpen(false)}
-                    style={{ padding: '0.8rem 1.8rem', borderRadius: '0.75rem', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', transition: 'all 0.2s' }}
-                    onMouseOver={e=>{e.target.style.background='#e2e8f0'; e.target.style.color='#1e293b';}} 
-                    onMouseOut={e=>{e.target.style.background='#f8fafc'; e.target.style.color='#475569';}}
-                  >
-                    {ct('cancel')}
-                  </button>
-                  <button 
-                    type="submit" 
-                    style={{ padding: '0.8rem 2rem', borderRadius: '0.75rem', background: 'linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(14, 165, 233, 0.3)', transition: 'transform 0.2s' }}
-                    onMouseOver={e=>e.currentTarget.style.transform='translateY(-2px)'} onMouseOut={e=>e.currentTarget.style.transform='translateY(0)'}
-                  >
-                    <Save size={20} /> {isEditing ? ct('updateInfo') : ct('saveInfo')}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="ti-modal-footer">
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  className="ti-btn-cancel"
+                >
+                  {ct('cancel')}
+                </button>
+                <button 
+                  type="submit" 
+                  className="ti-btn-save"
+                >
+                  <Save size={16} style={{ display: 'inline', marginRight: '4px' }} />
+                  {isEditing ? ct('updateInfo') : ct('saveInfo')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -632,7 +576,6 @@ export default function TabletsInfo({ user }) {
         what={ct('aboutWhat')}
         howToUse={ct('aboutHow')}
         importance={ct('aboutWhy')}
-        style={{ position: 'absolute', top: '8.5rem', right: '2rem' }}
       />
     </div>
   );

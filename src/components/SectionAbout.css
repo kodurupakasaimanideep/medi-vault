@@ -1,5 +1,5 @@
 /* Ensure all main page containers are relative so absolute positioning works perfectly */
-.db-page, .pi-page, .ms-page, .ti-page, .dp-page, .dw-page, .yoga-page-container, .inner-page, .temp-page, .settings-page, .container, .diet-page, .ta-page, .calendar-page {
+.db-page, .pi-page, .ms-page, .ti-page, .dp-page, .dw-page, .yoga-page-container, .inner-page, .temp-page, .settings-page, .container, .diet-page, .ta-page, .calendar-page, .ti-container, .cal-page-container {
   position: relative;
 }
 

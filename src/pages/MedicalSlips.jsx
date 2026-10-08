@@ -772,7 +772,7 @@ export default function MedicalSlips({ user }) {
       </div>
 
       {/* Slips Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: '1.5rem' }}>
         {filteredSlips.map((slip, idx) => {
           const theme = getSlipTheme(slip, idx);
           const isStarred = starredIds.includes(slip.id);
@@ -939,7 +939,7 @@ export default function MedicalSlips({ user }) {
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 
                 {/* Patient Info Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '1.25rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.6rem', color: '#1e293b', fontWeight: '700', fontSize: '0.95rem' }}>{ct('patientName')}</label>
                     <div style={{ position: 'relative' }}>
@@ -965,7 +965,7 @@ export default function MedicalSlips({ user }) {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '1.25rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.6rem', color: '#1e293b', fontWeight: '700', fontSize: '0.95rem' }}>{ct('hospitalName')}</label>
                     <input 
@@ -992,7 +992,7 @@ export default function MedicalSlips({ user }) {
                 </div>
 
                 {/* Date & Time Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '1.25rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.6rem', color: '#1e293b', fontWeight: '700', fontSize: '0.95rem' }}>{ct('date')}</label>
                     <input 

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getShortPatientId, formatHumanDisplayName } from '../utils/localAuth';
+import './Sidebar.css';
 
 /* ─── Shared avatar URL helper ────────────────────────────────────── */
 function resolveAvatarUrl(userId) {
