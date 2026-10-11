@@ -345,3 +345,59 @@ export async function requestNotificationPermission() {
 export function isBackgroundNotificationSupported() {
   return 'serviceWorker' in navigator && 'Notification' in window;
 }
+
+/**
+ * Show a system-level notification (Windows Desktop Action Center / Android Chrome Shade)
+ * Uses ServiceWorker registration if available for true desktop Action Center integration,
+ * with fallback to the Notification constructor.
+ */
+export async function showSystemNotification(title, options = {}) {
+  try {
+    if (typeof window === 'undefined') return false;
+
+    // Check permission
+    if (!('Notification' in window)) {
+      console.warn('[SystemNotif] Notifications not supported in this browser.');
+      return false;
+    }
+
+    if (Notification.permission !== 'granted') {
+      console.warn('[SystemNotif] Notification permission not granted (status:', Notification.permission, ')');
+      return false;
+    }
+
+    const defaultOptions = {
+      icon: '/favicon.svg',
+      badge: '/favicon.svg',
+      requireInteraction: true,
+      vibrate: [400, 200, 400],
+      ...options,
+    };
+
+    // 1. Try Service Worker showNotification (Best for Windows Desktop & Android Chrome)
+    if ('serviceWorker' in navigator) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && typeof reg.showNotification === 'function') {
+          await reg.showNotification(title, defaultOptions);
+          console.log('[SystemNotif] Successfully fired system notification via ServiceWorkerRegistration:', title);
+          return true;
+        }
+      } catch (swErr) {
+        console.warn('[SystemNotif] SW showNotification error, falling back:', swErr);
+      }
+    }
+
+    // 2. Direct Notification constructor fallback (standard desktop)
+    try {
+      new Notification(title, defaultOptions);
+      console.log('[SystemNotif] Successfully fired system notification via Notification constructor:', title);
+      return true;
+    } catch (notifErr) {
+      console.error('[SystemNotif] Notification constructor failed:', notifErr);
+    }
+  } catch (err) {
+    console.error('[SystemNotif] Error displaying system notification:', err);
+  }
+  return false;
+}

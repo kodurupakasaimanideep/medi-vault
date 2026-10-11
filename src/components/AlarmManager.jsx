@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BellRing, Pill, Music2 } from 'lucide-react';
-import { syncTabletAlarmsToSW, registerSoundCallback, dismissAlarmInSW } from '../services/swManager';
+import { syncTabletAlarmsToSW, syncWaterRemindersToSW, showSystemNotification, registerSoundCallback, dismissAlarmInSW } from '../services/swManager';
 import { dismissNativeTabletAlarm, isNativeApp } from '../services/nativeNotificationService';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -852,6 +852,45 @@ export default function AlarmManager() {
         localStorage.setItem('medivault_alarms_guest', JSON.stringify(updatedList));
         syncTabletAlarmsToSW(updatedList, uid);
       }
+
+      // ── Also check active water reminders site-wide ──
+      try {
+        const waterKey = uid && uid !== 'guest' ? `medivault_water_${uid}` : 'medivault_water';
+        const waterStore = JSON.parse(localStorage.getItem(waterKey) || '{}');
+        if (waterStore.remindersOn && Array.isArray(waterStore.reminders) && waterStore.reminders.length > 0) {
+          let waterNeedsSave = false;
+          let updatedWaterReminders = [...waterStore.reminders];
+
+          updatedWaterReminders.forEach((r, idx) => {
+            if (!r.enabled || !r.time24) return;
+            const [rh, rm] = r.time24.split(':').map(Number);
+            if (isNaN(rh) || isNaN(rm)) return;
+            const rMin = rh * 60 + rm;
+            const diff = currentMin - rMin;
+            const normTime = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+            const triggerKey = `${todayStr}_${normTime}`;
+
+            if (diff >= 0 && diff <= 2 && r.lastTriggeredKey !== triggerKey) {
+              console.log(`[AlarmManager] Site-wide water reminder triggered for ${normTime}`);
+              r.lastTriggered = todayStr;
+              r.lastTriggeredKey = triggerKey;
+              updatedWaterReminders[idx] = { ...r, lastTriggered: todayStr, lastTriggeredKey: triggerKey };
+              waterNeedsSave = true;
+
+              // Fire custom event for in-page notification / sounds
+              window.dispatchEvent(new CustomEvent('medivault_water_reminder_fired', { detail: r }));
+            }
+          });
+
+          if (waterNeedsSave) {
+            waterStore.reminders = updatedWaterReminders;
+            localStorage.setItem(waterKey, JSON.stringify(waterStore));
+            syncWaterRemindersToSW(updatedWaterReminders, waterStore.remindersOn, uid);
+          }
+        }
+      } catch (wErr) {
+        // silent catch
+      }
     };
 
     // ── Dedicated Background Web Worker Timer ──
@@ -906,10 +945,31 @@ export default function AlarmManager() {
       }
     };
 
+    // Handle site-wide water reminder fired event (when user is on other pages)
+    const handleWaterFired = async (e) => {
+      const reminder = e.detail;
+      const time = reminder?.time || reminder?.time24 || 'Now';
+      console.log('[AlarmManager] Handling water reminder event:', reminder);
+
+      if (!isNativeApp()) {
+        await showSystemNotification('💧 Hydration Reminder — MediVault', {
+          body: `It's ${time}! Time to drink water. Stay healthy & hydrated! 🌊`,
+          tag: `water-reminder-${reminder?.id || 'live'}`,
+          data: { url: '/drinking-water', type: 'water' },
+          actions: [
+            { action: 'logged', title: '✓ Log 250ml' },
+            { action: 'open', title: '💧 Open App' },
+            { action: 'dismiss', title: 'Dismiss' }
+          ]
+        });
+      }
+    };
+
     window.addEventListener('medivault_alarms_updated', handleAlarmsUpdated);
     window.addEventListener('storage', handleStorageEvent);
     window.addEventListener('medivault_sw_alarm', handleSwAlarm);
     window.addEventListener('medivault_test_alarm', handleTestAlarm);
+    window.addEventListener('medivault_water_reminder_fired', handleWaterFired);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -925,6 +985,7 @@ export default function AlarmManager() {
       window.removeEventListener('medivault_sw_alarm', handleSwAlarm);
       window.removeEventListener('medivault_stop_alarm', handleStopAlarm);
       window.removeEventListener('medivault_test_alarm', handleTestAlarm);
+      window.removeEventListener('medivault_water_reminder_fired', handleWaterFired);
       window.removeEventListener('keydown', handleKeyDown);
       if (bus) bus.close();
     };

@@ -1,6 +1,7 @@
 import { messaging, db } from '../firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { isNativeApp } from './nativeNotificationService';
 
 // Public VAPID Key (FCM Web Push Certificate Key)
 // Replace with your actual FCM VAPID Key from: Firebase Console > Project Settings > Cloud Messaging > Web configuration
@@ -24,7 +25,16 @@ export async function requestNotificationPermission() {
  * Fetch FCM Registration Token for the device and save it in Firestore
  */
 export async function getAndRegisterFCMToken(uid) {
-  if (!uid || !messaging) return null;
+  if (!uid || !messaging) {
+    console.warn('[FCM] Cannot register token: uid or messaging instance is missing.');
+    return null;
+  }
+
+  // If running inside Android Native App, native LocalNotifications is used; do not register Web push token to prevent duplicate notifications
+  if (isNativeApp()) {
+    console.log('[FCM] Running in Android Native container; native hardware notifications are active, skipping Web FCM push token.');
+    return null;
+  }
 
   try {
     const permission = Notification.permission;
@@ -33,19 +43,38 @@ export async function getAndRegisterFCMToken(uid) {
       return null;
     }
 
-    // Get the FCM registration token using VAPID key
-    const token = await getToken(messaging, {
-      vapidKey: VAPID_KEY,
-      serviceWorkerRegistration: await navigator.serviceWorker.ready
-    });
+    let swReg = null;
+    if ('serviceWorker' in navigator) {
+      try {
+        swReg = await navigator.serviceWorker.ready;
+      } catch (_) {}
+    }
+
+    console.log('[FCM] Requesting FCM registration token with service worker registration...');
+    let token = null;
+
+    try {
+      const opts = { vapidKey: VAPID_KEY };
+      if (swReg) opts.serviceWorkerRegistration = swReg;
+      token = await getToken(messaging, opts);
+    } catch (keyErr) {
+      console.warn('[FCM] Error obtaining token with configured VAPID key:', keyErr?.message || keyErr);
+      try {
+        const fallbackOpts = swReg ? { serviceWorkerRegistration: swReg } : undefined;
+        token = await getToken(messaging, fallbackOpts);
+      } catch (fbErr) {
+        console.warn('[FCM] Fallback token retrieval attempt error:', fbErr?.message || fbErr);
+      }
+    }
 
     if (token) {
-      console.log('[FCM] Retrieved registration token:', token);
+      console.log('[FCM] Retrieved registration token successfully:', token.slice(0, 15) + '...');
       
       // Store token in Firestore under userData/{uid}
       const userRef = doc(db, 'userData', uid);
       await setDoc(userRef, {
         fcmToken: token,
+        fcmTokenPlatform: 'web',
         fcmTokenLastUpdated: Date.now(),
         updatedAt: Date.now()
       }, { merge: true });
@@ -56,7 +85,7 @@ export async function getAndRegisterFCMToken(uid) {
       localStorage.setItem('medivault_fcm_token', token);
       return token;
     } else {
-      console.warn('[FCM] No registration token available. Request permission to generate one.');
+      console.warn('[FCM] No registration token returned. Verify Firebase Cloud Messaging Web configuration.');
       return null;
     }
   } catch (err) {
@@ -164,6 +193,9 @@ export async function syncRemindersToFirestore(userId, type, items, masterEnable
         type,
         active,
         url,
+        platform: isNativeApp() ? 'android_native' : 'web',
+        timezoneOffset: new Date().getTimezoneOffset(),
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
         updatedAt: Date.now()
       }, { merge: true });
     }

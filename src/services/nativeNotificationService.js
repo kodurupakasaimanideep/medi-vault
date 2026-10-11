@@ -43,13 +43,24 @@ export async function requestNativePermissions() {
     const status = await LocalNotifications.checkPermissions();
     console.log('[NativeNotif] Current permission status:', status);
 
+    let displayStatus = status.display;
     if (status.display !== 'granted') {
       const requested = await LocalNotifications.requestPermissions();
       console.log('[NativeNotif] Requested permission status:', requested);
-      return requested.display;
+      displayStatus = requested.display;
     }
 
-    return status.display;
+    // Check exact alarm permissions on Android 12+ (API 31+) if available
+    try {
+      if (typeof LocalNotifications.checkExactNotificationSetting === 'function') {
+        const exactSetting = await LocalNotifications.checkExactNotificationSetting();
+        console.log('[NativeNotif] Android Exact Alarm Setting status:', exactSetting);
+      }
+    } catch (exactErr) {
+      console.warn('[NativeNotif] Exact alarm check skipped:', exactErr);
+    }
+
+    return displayStatus;
   } catch (err) {
     console.error('[NativeNotif] Error checking/requesting permissions:', err);
     return 'denied';
@@ -126,7 +137,7 @@ export async function initNativeNotifications() {
       id: 'medivault_water_reminders',
       name: 'Hydration & Water Reminders',
       description: 'Regular notifications to drink water and maintain daily hydration',
-      importance: 4, // HIGH importance — makes sound and shows in shade
+      importance: 5, // MAX importance — makes sound and shows heads-up notification on mobile lockscreen / shade
       visibility: 1,
       vibration: true,
       lights: true,
@@ -246,14 +257,23 @@ function handleNotificationAction(event) {
  * @param {string} userId - User UID for strict data isolation
  */
 export async function scheduleNativeTabletAlarms(alarms = [], userId = '') {
-  if (!isNativeApp()) return;
+  if (!isNativeApp()) {
+    console.log('[NativeNotif] Not running in native container; skipping native tablet alarm scheduling.');
+    return { success: false, reason: 'not_native' };
+  }
 
   const uid = userId || getActiveUserId();
 
   try {
+    // 0. Ensure Android notification permission is granted
+    const permStatus = await requestNativePermissions();
+    if (permStatus !== 'granted') {
+      console.warn(`[NativeNotif] Tablet alarms permission not granted (${permStatus}).`);
+    }
+
     // 1. Cancel previous tablet notifications to avoid duplicates or orphaned alarms
     const pending = await LocalNotifications.getPending();
-    const tabletNotifIds = pending.notifications
+    const tabletNotifIds = (pending.notifications || [])
       .filter(n => n.extra?.type === 'tablet' || n.extra?.channel === 'tablet')
       .map(n => ({ id: n.id }));
 
@@ -301,11 +321,21 @@ export async function scheduleNativeTabletAlarms(alarms = [], userId = '') {
     if (notificationsToSchedule.length > 0) {
       await LocalNotifications.schedule({ notifications: notificationsToSchedule });
       console.log(`[NativeNotif] Successfully scheduled ${notificationsToSchedule.length} daily repeating native tablet alarms for user ${uid}`);
+
+      // Verify scheduled notifications
+      const pendingAfter = await LocalNotifications.getPending();
+      const verified = (pendingAfter.notifications || []).filter(
+        n => n.extra?.type === 'tablet' || n.extra?.channel === 'tablet'
+      );
+      console.log(`[NativeNotif] Verification: ${verified.length} pending native tablet alarms active in Android system.`);
+      return { success: true, count: verified.length, verified };
     } else {
       console.log(`[NativeNotif] No active tablet alarms to schedule for user ${uid}`);
+      return { success: true, count: 0 };
     }
   } catch (err) {
     console.error('[NativeNotif] Error scheduling native tablet alarms:', err);
+    return { success: false, error: err };
   }
 }
 
@@ -316,14 +346,26 @@ export async function scheduleNativeTabletAlarms(alarms = [], userId = '') {
  * @param {string} userId - User UID
  */
 export async function scheduleNativeWaterReminders(reminders = [], masterEnabled = true, userId = '') {
-  if (!isNativeApp()) return;
+  if (!isNativeApp()) {
+    console.log('[NativeNotif] Not running in native container; skipping native water reminder scheduling.');
+    return { success: false, reason: 'not_native' };
+  }
 
   const uid = userId || getActiveUserId();
 
   try {
-    // 1. Cancel previous water reminders
+    console.log(`[NativeNotif] Preparing native water reminders for user ${uid}. Master enabled: ${masterEnabled}, reminders:`, reminders?.length);
+
+    // 0. Ensure Android notification permission is requested & granted
+    const permStatus = await requestNativePermissions();
+    if (permStatus !== 'granted') {
+      console.warn(`[NativeNotif] Water reminders permission not granted (${permStatus}). Reminders cannot be scheduled until user grants permission.`);
+      return { success: false, reason: 'permission_denied', permission: permStatus };
+    }
+
+    // 1. Cancel previous water reminders to avoid duplicate notifications
     const pending = await LocalNotifications.getPending();
-    const waterNotifIds = pending.notifications
+    const waterNotifIds = (pending.notifications || [])
       .filter(n => n.extra?.type === 'water' || n.extra?.channel === 'water')
       .map(n => ({ id: n.id }));
 
@@ -334,7 +376,7 @@ export async function scheduleNativeWaterReminders(reminders = [], masterEnabled
 
     if (!masterEnabled || !reminders || reminders.length === 0) {
       console.log(`[NativeNotif] Water reminders are disabled or empty for user ${uid}`);
-      return;
+      return { success: true, count: 0, reason: 'disabled_or_empty' };
     }
 
     const notificationsToSchedule = [];
@@ -363,8 +405,8 @@ export async function scheduleNativeWaterReminders(reminders = [], masterEnabled
             hour: hours,
             minute: minutes
           },
-          repeats: true, // Daily repeating alarm
-          allowWhileIdle: true // Fires in Android Doze mode
+          repeats: true, // Daily repeating exact alarm
+          allowWhileIdle: true // Fires in Android Doze mode / lockscreen
         },
         extra: {
           type: 'water',
@@ -379,10 +421,22 @@ export async function scheduleNativeWaterReminders(reminders = [], masterEnabled
 
     if (notificationsToSchedule.length > 0) {
       await LocalNotifications.schedule({ notifications: notificationsToSchedule });
-      console.log(`[NativeNotif] Successfully scheduled ${notificationsToSchedule.length} daily repeating water reminders for user ${uid}`);
+      console.log(`[NativeNotif] Successfully called schedule for ${notificationsToSchedule.length} water reminders.`);
+
+      // 2. Verification step: verify scheduled notifications with getPending()
+      const pendingAfter = await LocalNotifications.getPending();
+      const verified = (pendingAfter.notifications || []).filter(
+        n => n.extra?.type === 'water' || n.extra?.channel === 'water'
+      );
+      console.log(`[NativeNotif] Verification: ${verified.length} pending native water reminders active in Android system:`, verified.map(v => ({ id: v.id, time: v.extra?.time })));
+      return { success: true, count: verified.length, verified };
+    } else {
+      console.log(`[NativeNotif] No active enabled water reminders to schedule for user ${uid}`);
+      return { success: true, count: 0 };
     }
   } catch (err) {
     console.error('[NativeNotif] Error scheduling native water reminders:', err);
+    return { success: false, error: err };
   }
 }
 

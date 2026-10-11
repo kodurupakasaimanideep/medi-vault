@@ -13,7 +13,7 @@
    5. Instant Sound Playback: When user taps notification or opens app, plays rich audio alarm.
 ═══════════════════════════════════════════════════════════════════ */
 
-const SW_VERSION = 'medivault-sw-v8';
+const SW_VERSION = 'medivault-sw-v10';
 const DB_NAME    = 'medivault-sw-db';
 const DB_VERSION = 2;
 
@@ -362,11 +362,14 @@ async function doCheck() {
       const [rh, rm] = r.time24.split(':').map(Number);
       const rMin = rh * 60 + rm;
       const diff = currentMin - rMin;
+      const normTime = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+      const triggerKey = `${todayStr}_${normTime}`;
 
-      if (diff >= 0 && diff <= 2 && r.lastTriggered !== todayStr) {
+      if (diff >= 0 && diff <= 2 && r.lastTriggeredKey !== triggerKey) {
         r.lastTriggered = todayStr;
+        r.lastTriggeredKey = triggerKey;
         waterReminders = waterReminders.map((wr) =>
-          wr.id === r.id ? { ...wr, lastTriggered: todayStr } : wr
+          wr.id === r.id ? { ...wr, lastTriggered: todayStr, lastTriggeredKey: triggerKey } : wr
         );
         await dbSet('config', 'waterReminders', waterReminders);
 
@@ -677,8 +680,76 @@ self.addEventListener('periodicsync', (event) => {
 });
 
 /* ─────────────────────────────────────────────────────────────
+   Web Push & Firebase Cloud Messaging (FCM) Listener
+   Delivers notifications when website tab is closed or backgrounded
+───────────────────────────────────────────────────────────── */
+self.addEventListener('push', (event) => {
+  console.log('[SW] Web Push event received:', event);
+
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (_) {
+      try {
+        payload = { notification: { body: event.data.text() } };
+      } catch (e) {
+        payload = {};
+      }
+    }
+  }
+
+  const notification = payload.notification || {};
+  const data = payload.data || {};
+  const notifType = data.type || (notification.title?.includes('Medicine') ? 'tablet' : 'water');
+  const title = notification.title || (notifType === 'tablet' ? '💊 Medicine Reminder — MediVault' : '💧 Hydration Reminder — MediVault');
+  const body = notification.body || (notifType === 'tablet' ? 'Time for your scheduled medicine dose!' : 'Time to drink water! Keep your body hydrated. 🌊');
+  const targetUrl = data.url || (notifType === 'tablet' ? '/tablet-alarm' : '/drinking-water');
+
+  const options = {
+    body,
+    icon: notification.icon || '/alarm-icon.png',
+    badge: notification.badge || '/badge.png',
+    tag: `medivault-push-${notifType}-${Date.now()}`,
+    requireInteraction: true,
+    silent: false,
+    renotify: true,
+    vibrate: notifType === 'water' ? [400, 200, 400, 200, 600] : [500, 250, 500, 250, 800],
+    data: {
+      type: notifType,
+      url: targetUrl,
+      ...data
+    },
+    actions: notifType === 'water' ? [
+      { action: 'logged', title: '✓ Log 250ml' },
+      { action: 'open', title: '💧 Open App' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ] : [
+      { action: 'taken', title: '✓ Taken' },
+      { action: 'open', title: 'Open App' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ]
+  };
+
+  event.waitUntil(
+    (async () => {
+      // 1. Display rich native OS system notification
+      await self.registration.showNotification(title, options);
+
+      // 2. Broadcast to open clients if any tab is active
+      if (notifType === 'water') {
+        await notifyClientsToPlayWaterSound({ time: 'Reminder', body });
+      } else {
+        await notifyClientsToPlaySound({ tablet: body, time: 'Reminder' });
+      }
+    })()
+  );
+});
+
+/* ─────────────────────────────────────────────────────────────
    Fetch Event (Service Worker Passthrough)
 ───────────────────────────────────────────────────────────── */
 self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
 });
+

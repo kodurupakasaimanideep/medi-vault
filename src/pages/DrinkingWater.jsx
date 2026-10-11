@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Droplets, Plus, Bell, BellOff, Target, Clock, Calculator, History, BarChart2, X, Check, Volume2, Trash2, ChevronDown, ChevronUp, Flame } from 'lucide-react';
+import { Droplets, Plus, Bell, BellOff, Target, Clock, Calculator, History, BarChart2, X, Check, Volume2, Trash2, ChevronDown, ChevronUp, Flame, Calendar, RefreshCw, Zap } from 'lucide-react';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import './DrinkingWater.css';
-import { syncWaterRemindersToSW, requestNotificationPermission, registerSoundCallback } from '../services/swManager';
-import { syncRemindersToFirestore } from '../services/notificationManager';
+import { syncWaterRemindersToSW, requestNotificationPermission, registerSoundCallback, showSystemNotification } from '../services/swManager';
+import { syncRemindersToFirestore, getAndRegisterFCMToken } from '../services/notificationManager';
 import { scheduleNativeWaterReminders, requestNativePermissions, isNativeApp } from '../services/nativeNotificationService';
 import SectionAbout from '../components/SectionAbout';
 
@@ -951,12 +952,17 @@ export default function DrinkingWater({ user }) {
   const [history, setHistory] = useState(store.history || {});
   const [reminders, setReminders] = useState(store.reminders || []);
   const [remindersOn, setRemindersOn] = useState(store.remindersOn ?? false);
+  const [reminderInterval, setReminderInterval] = useState(store.reminderInterval || 40); // default 40 mins
+  const [intervalStartTime, setIntervalStartTime] = useState(store.intervalStartTime || '08:00');
+  const [intervalEndTime, setIntervalEndTime] = useState(store.intervalEndTime || '21:00');
   const [showTargetModal, setShowTargetModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showReminderModal, setShowReminderModal] = useState(false);
   const [showNotifPopup, setShowNotifPopup] = useState(false);
   const [popupMsg, setPopupMsg] = useState('');
-  const [notifPermission, setNotifPermission] = useState(Notification.permission);
+  const [notifPermission, setNotifPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
   const [customAmount, setCustomAmount] = useState(250);
   const [targetInput, setTargetInput] = useState(target);
   const [newReminderTime, setNewReminderTime] = useState('08:00');
@@ -978,15 +984,42 @@ export default function DrinkingWater({ user }) {
 
   // Sync state when user changes
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id || user?.uid) {
       const uStore = loadStore(user);
       setTarget(uStore.target || 2500);
       setTodayLogs(uStore[todayKey]?.logs || []);
       setHistory(uStore.history || {});
       setReminders(uStore.reminders || []);
       setRemindersOn(uStore.remindersOn ?? false);
+      if (uStore.reminderInterval) setReminderInterval(uStore.reminderInterval);
+      if (uStore.intervalStartTime) setIntervalStartTime(uStore.intervalStartTime);
+      if (uStore.intervalEndTime) setIntervalEndTime(uStore.intervalEndTime);
     }
   }, [user, todayKey]);
+
+  // Check and sync permissions on mount + register FCM token if granted on web
+  useEffect(() => {
+    async function initPerms() {
+      if (isNativeApp()) {
+        try {
+          const perm = await requestNativePermissions();
+          setNotifPermission(perm);
+          console.log('[DrinkingWater] Android native notification permission:', perm);
+        } catch (e) {
+          console.error('[DrinkingWater] Error checking native permissions:', e);
+        }
+      } else {
+        if ('Notification' in window) {
+          setNotifPermission(Notification.permission);
+          const uid = user?.id || user?.uid;
+          if (Notification.permission === 'granted' && uid) {
+            getAndRegisterFCMToken(uid);
+          }
+        }
+      }
+    }
+    initPerms();
+  }, [user?.id, user?.uid]);
 
   /* ── PERSIST ── */
   useEffect(() => {
@@ -996,20 +1029,26 @@ export default function DrinkingWater({ user }) {
     store.history = history;
     store.reminders = reminders;
     store.remindersOn = remindersOn;
+    store.reminderInterval = reminderInterval;
+    store.intervalStartTime = intervalStartTime;
+    store.intervalEndTime = intervalEndTime;
     saveStore(store, user);
     window.dispatchEvent(new CustomEvent('medivault_water_updated'));
+
     // Sync water reminders to service worker for web background notifications
     const uid = user?.id || user?.uid || '';
     syncWaterRemindersToSW(reminders, remindersOn, uid);
+
     // Schedule native Android water reminders when running in Capacitor app
     if (isNativeApp()) {
       scheduleNativeWaterReminders(reminders, remindersOn, uid);
     }
-    // Sync to Firestore for closed-app notifications
+
+    // Sync to Firestore for cloud background push notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'water', reminders, remindersOn);
     }
-  }, [target, todayLogs, history, reminders, remindersOn, user?.id, user?.uid]);
+  }, [target, todayLogs, history, reminders, remindersOn, reminderInterval, intervalStartTime, intervalEndTime, user?.id, user?.uid]);
 
   /* ── SYNC HISTORY ── */
   useEffect(() => {
@@ -1021,7 +1060,16 @@ export default function DrinkingWater({ user }) {
 
   /* ── NOTIFICATION PERMISSION ── */
   async function requestNotifPermission() {
-    const perm = isNativeApp() ? await requestNativePermissions() : await requestNotificationPermission();
+    let perm = 'denied';
+    if (isNativeApp()) {
+      perm = await requestNativePermissions();
+    } else {
+      perm = await requestNotificationPermission();
+      const uid = user?.id || user?.uid;
+      if (perm === 'granted' && uid) {
+        await getAndRegisterFCMToken(uid);
+      }
+    }
     setNotifPermission(perm);
     return perm;
   }
@@ -1123,40 +1171,88 @@ export default function DrinkingWater({ user }) {
     } catch (_) {}
   }
 
-  /* ── FIRE NOTIFICATION ── */
-  const fireNotification = useCallback((reminder) => {
+  /* ── FIRE NOTIFICATION (System desktop / Android notification + sound + in-page popup) ── */
+  const fireNotification = useCallback(async (reminder) => {
     playWaterSound();
-    const time = reminder?.time || 'Now';
+    const time = reminder?.time || reminder?.time24 || 'Now';
     const msg = `💧 Time to drink water! (${time}) — Stay hydrated!`;
     setPopupMsg(msg);
     setShowNotifPopup(true);
     setTimeout(() => setShowNotifPopup(false), 8000);
 
-    // Browser notification (shown when tab is open too, as extra reinforcement)
-    if (Notification.permission === 'granted') {
+    // If running in Capacitor Android Native App:
+    if (isNativeApp()) {
+      console.log('[DrinkingWater] Running in Android Native App container. Scheduling native notification.');
       try {
-        new Notification('💧 Hydration Reminder — MediVault', {
-          body: `It's ${time}! Time to drink water. Stay hydrated! 🌊`,
-          icon: '/favicon.svg',
-          requireInteraction: false,
-          tag: `water-reminder-${reminder?.id || 'test'}`,
-        });
+        const perm = await requestNativePermissions();
+        if (perm === 'granted') {
+          const testId = 9000 + Math.floor(Math.random() * 999);
+          await LocalNotifications.schedule({
+            notifications: [
+              {
+                id: testId,
+                title: '💧 Hydration Reminder — MediVault',
+                body: `It's ${time}! Time to drink water. Stay healthy & hydrated! 🌊`,
+                channelId: 'medivault_water_reminders',
+                actionTypeId: 'MEDIVAULT_WATER_ACTIONS',
+                schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
+                extra: { type: 'water', reminderId: reminder?.id, time }
+              }
+            ]
+          });
+          console.log('[DrinkingWater] Android native notification scheduled successfully for:', time);
+        } else {
+          console.warn('[DrinkingWater] Android native notification permission not granted:', perm);
+        }
+      } catch (err) {
+        console.error('[DrinkingWater] Error scheduling Android native notification:', err);
+      }
+      return;
+    }
+
+    // On Web (Desktop Windows / Android Chrome / Edge):
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      try {
+        const p = await requestNotifPermission();
+        if (p !== 'granted') {
+          console.warn('[DrinkingWater] Notification permission not granted:', p);
+        }
       } catch (_) {}
     }
+
+    // Show system notification (Windows desktop Action Center / mobile shade)
+    await showSystemNotification('💧 Hydration Reminder — MediVault', {
+      body: `It's ${time}! Time to drink water. Stay hydrated! 🌊`,
+      tag: `water-reminder-${reminder?.id || 'live'}`,
+      data: { url: '/drinking-water', type: 'water' },
+      actions: [
+        { action: 'logged', title: '✓ Log 250ml' },
+        { action: 'open', title: '💧 Open App' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
+    });
   }, []);
 
-  /* ── REGISTER SW CALLBACK + LISTEN FOR SW-FIRED WATER REMINDERS ── */
+  /* ── REGISTER SW CALLBACK + LISTEN FOR SW-FIRED & SITE-WIDE WATER REMINDERS ── */
   useEffect(() => {
-    // Register: when SW fires a water reminder while tab is closed, and user
-    // clicks the notification -> tab opens -> fireNotification plays the sound
     registerSoundCallback('playWaterSound', fireNotification);
 
-    // Also listen for the custom window event dispatched by swManager
     const handleSwWater = (e) => fireNotification(e.detail);
     window.addEventListener('medivault_sw_water', handleSwWater);
 
+    const handleSiteWideWater = (e) => {
+      if (e?.detail) {
+        setPopupMsg(`💧 Time to drink water! (${e.detail.time || e.detail.time24}) — Stay hydrated!`);
+        setShowNotifPopup(true);
+        playWaterSound();
+        setTimeout(() => setShowNotifPopup(false), 8000);
+      }
+    };
+    window.addEventListener('medivault_water_reminder_fired', handleSiteWideWater);
+
     return () => {
       window.removeEventListener('medivault_sw_water', handleSwWater);
+      window.removeEventListener('medivault_water_reminder_fired', handleSiteWideWater);
     };
   }, [fireNotification]);
 
@@ -1167,30 +1263,69 @@ export default function DrinkingWater({ user }) {
 
     intervalRef.current = setInterval(() => {
       const now             = new Date();
-      const currentTotalMin = now.getHours() * 60 + now.getMinutes();
+      const currentHours    = now.getHours();
+      const currentMinutes  = now.getMinutes();
+      const currentTotalMin = currentHours * 60 + currentMinutes;
       const todayStr        = now.toISOString().split('T')[0];
 
       let needsSave        = false;
       let updatedReminders = [...reminders];
 
       updatedReminders.forEach((r, idx) => {
-        if (!r.enabled) return;
+        if (!r.enabled || !r.time24) return;
         const [rh, rm] = r.time24.split(':').map(Number);
+        if (isNaN(rh) || isNaN(rm)) return;
         const rMin     = rh * 60 + rm;
         const diff     = currentTotalMin - rMin;
+        const normTime = `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+        const triggerKey = `${todayStr}_${normTime}`;
 
-        if (diff >= 0 && diff <= 5 && r.lastTriggered !== todayStr) {
+        if (diff >= 0 && diff <= 2 && r.lastTriggeredKey !== triggerKey) {
+          console.log(`[DrinkingWater] In-page reminder triggered for ${normTime}`);
           fireNotification(r);
           needsSave = true;
-          updatedReminders[idx] = { ...r, lastTriggered: todayStr };
+          updatedReminders[idx] = { ...r, lastTriggered: todayStr, lastTriggeredKey: triggerKey };
         }
       });
 
       if (needsSave) setReminders(updatedReminders);
-    }, 10000);
+    }, 5000);
 
     return () => clearInterval(intervalRef.current);
   }, [reminders, remindersOn, fireNotification]);
+
+  /* ── AUTO-GENERATE INTERVAL SCHEDULE ── */
+  function generateIntervalSchedule(intervalMins = reminderInterval) {
+    const [startH, startM] = (intervalStartTime || '08:00').split(':').map(Number);
+    const [endH, endM] = (intervalEndTime || '21:00').split(':').map(Number);
+    const startTotal = (isNaN(startH) ? 8 : startH) * 60 + (isNaN(startM) ? 0 : startM);
+    const endTotal = (isNaN(endH) ? 21 : endH) * 60 + (isNaN(endM) ? 0 : endM);
+    const step = parseInt(intervalMins, 10) || 40;
+
+    const newSchedule = [];
+    for (let m = startTotal; m <= endTotal; m += step) {
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      const time24 = `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+      const period = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      const display = `${h12}:${String(min).padStart(2, '0')} ${period}`;
+      newSchedule.push({
+        id: Date.now() + m,
+        time24,
+        time: display,
+        enabled: true,
+        amount: 250
+      });
+    }
+
+    if (newSchedule.length > 0) {
+      setReminderInterval(step);
+      setReminders(newSchedule);
+      setRemindersOn(true);
+      console.log(`[DrinkingWater] Generated ${newSchedule.length} interval reminders with interval ${step} min.`);
+    }
+  }
 
   /* ── ADD WATER LOG ── */
   function addWater(amount, drinkName = 'Water') {
@@ -1577,10 +1712,91 @@ export default function DrinkingWater({ user }) {
             </div>
           </div>
 
-          {/* 40-min hint */}
-          <div className="dw-hint-strip">
-            <Clock size={16} />
-            <span><strong>{lang === 'te' ? 'సిఫార్సు చేయబడింది:' : lang === 'hi' ? 'अनुशंसित:' : lang === 'eu' ? 'Recomendado:' : 'Recommended:'}</strong> {lang === 'te' ? 'గరిష్ట హైడ్రేషన్ కోసం రోజంతా ప్రతి 40 నిమిషాలకు రిమైండర్‌లను సెట్ చేయండి.' : lang === 'hi' ? 'इष्टतम जलयोजन के लिए दिन भर हर 40 मिनट पर रिमाइंडर सेट करें।' : lang === 'eu' ? 'Establece recordatorios cada 40 minutos durante el día para una hidratación óptima.' : 'Set reminders every 40 minutes throughout the day for optimal hydration.'}</span>
+          {/* Hydration Interval & Schedule Configurator */}
+          <div className="dw-interval-card" style={{
+            background: 'var(--card-bg, #ffffff)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--border, #e2e8f0)',
+            marginBottom: '1.25rem',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clock size={20} style={{ color: '#0ea5e9' }} />
+                <div>
+                  <strong style={{ fontSize: '0.98rem', display: 'block', color: 'var(--text-primary, #1e293b)' }}>
+                    {lang === 'te' ? 'హైడ్రేషన్ విరామం & షెడ్యూల్' : lang === 'hi' ? 'जलयोजन अंतराल और अनुसूची' : lang === 'eu' ? 'Intervalo y Horario de Hidratación' : 'Hydration Interval & Schedule'}
+                  </strong>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary, #64748b)' }}>
+                    {lang === 'te' ? 'మీ రోజువారీ విరామాన్ని ఎంచుకోండి లేదా షెడ్యూల్ స్వయంచాలకంగా రూపొందించండి' : lang === 'hi' ? 'अपना अनुस्मारक अंतराल चुनें या स्वचालित अनुसूची बनाएं' : lang === 'eu' ? 'Elija su intervalo de recordatorio o genere un horario' : 'Select reminder interval & auto-generate full day drinking schedule'}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="dw-target-btn sm"
+                onClick={() => generateIntervalSchedule(reminderInterval)}
+                title="Generate schedule based on selected interval"
+                style={{ background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: 'white', padding: '7px 16px', borderRadius: '8px', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <RefreshCw size={15} />
+                {lang === 'te' ? 'షెడ్యూల్ రూపొందించు' : lang === 'hi' ? 'शेड्यूल बनाएं' : lang === 'eu' ? 'Generar Horario' : 'Apply Interval Schedule'}
+              </button>
+            </div>
+
+            {/* Interval buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary, #475569)', marginRight: '4px' }}>
+                {lang === 'te' ? 'విరామం:' : lang === 'hi' ? 'अंतराल:' : lang === 'eu' ? 'Intervalo:' : 'Interval:'}
+              </span>
+              {[30, 40, 45, 60, 90, 120].map(mins => (
+                <button
+                  key={mins}
+                  className={`dw-preset-btn sm ${reminderInterval === mins ? 'active' : ''}`}
+                  onClick={() => {
+                    setReminderInterval(mins);
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '20px',
+                    fontSize: '0.8rem',
+                    fontWeight: reminderInterval === mins ? 700 : 500,
+                    border: reminderInterval === mins ? '2px solid #0ea5e9' : '1px solid #cbd5e1',
+                    background: reminderInterval === mins ? '#e0f2fe' : 'transparent',
+                    color: reminderInterval === mins ? '#0369a1' : 'inherit',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {mins} min {mins === 40 ? '⭐' : ''}
+                </button>
+              ))}
+            </div>
+
+            {/* Time Window (Start to End) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: 'var(--text-secondary, #64748b)' }}>{lang === 'te' ? 'ప్రారంభం:' : lang === 'hi' ? 'आरंभ:' : lang === 'eu' ? 'Inicio:' : 'Start:'}</span>
+                <input
+                  type="time"
+                  value={intervalStartTime}
+                  onChange={(e) => setIntervalStartTime(e.target.value)}
+                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ color: 'var(--text-secondary, #64748b)' }}>{lang === 'te' ? 'ముగింపు:' : lang === 'hi' ? 'समाप्ति:' : lang === 'eu' ? 'Fin:' : 'End:'}</span>
+                <input
+                  type="time"
+                  value={intervalEndTime}
+                  onChange={(e) => setIntervalEndTime(e.target.value)}
+                  style={{ padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                />
+              </div>
+              <span style={{ fontSize: '0.78rem', color: '#0284c7', fontStyle: 'italic' }}>
+                ✓ {lang === 'te' ? 'విండోస్ డెస్క్‌టాప్ మరియు ఆండ్రాయిడ్‌తో సమకాలీకరించబడింది' : lang === 'hi' ? 'विंडोज डेस्कटॉप और एंड्रॉइड के साथ समन्वयित' : lang === 'eu' ? 'Sincronizado con Windows y Android' : 'Syncs with Windows Desktop Notifications & Android Notification Panel'}
+              </span>
+            </div>
           </div>
 
           {reminders.length === 0 ? (
@@ -1627,9 +1843,14 @@ export default function DrinkingWater({ user }) {
           )}
 
           {/* Test notification button */}
-          <button className="dw-test-notif-btn" onClick={() => fireNotification({ time: 'Test' })} id="dw-test-notification">
-            <Volume2 size={18} /> {dt('testNotifBtn')}
-          </button>
+          <div style={{ marginTop: '1.25rem', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <button className="dw-test-notif-btn" onClick={() => {
+              console.log('[DrinkingWater] Triggering test system notification...');
+              fireNotification({ time: 'Live Test' });
+            }} id="dw-test-notification">
+              <Volume2 size={18} /> {dt('testNotifBtn')} (Windows Desktop &amp; Android System)
+            </button>
+          </div>
         </div>
       )}
 

@@ -18,26 +18,24 @@ exports.checkAndSendReminders = functions.pubsub
   .schedule('every 1 minutes')
   .onRun(async (context) => {
     const now = new Date();
-    // Format to local HH:MM (e.g. '08:30')
-    // Note: Cloud Functions run in UTC by default. Adjust to your local timezone (e.g. Asia/Kolkata +5:30)
-    const localTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); 
-    const currentHour = String(localTime.getHours()).padStart(2, '0');
-    const currentMin = String(localTime.getMinutes()).padStart(2, '0');
+    // Default local time calculation (UTC+5:30 IST default)
+    const defaultLocalTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000)); 
+    const currentHour = String(defaultLocalTime.getHours()).padStart(2, '0');
+    const currentMin = String(defaultLocalTime.getMinutes()).padStart(2, '0');
     const timeString24 = `${currentHour}:${currentMin}`;
-    const todayStr = localTime.toISOString().split('T')[0];
+    const todayStr = defaultLocalTime.toISOString().split('T')[0];
 
-    console.log(`[Scheduler] Checking reminders scheduled at: ${timeString24} UTC+5:30`);
+    console.log(`[Scheduler] Checking reminders scheduled at: ${timeString24} (UTC: ${now.toISOString()})`);
 
     try {
-      // 1. Query Firestore for active reminders scheduled for this minute
-      // Schema model: reminders/{reminderId} -> { userId, title, body, time24, type, active }
+      // 1. Query Firestore for active reminders matching this minute
       const remindersSnapshot = await db.collection('reminders')
-        .where('time24', '==', timeString24)
         .where('active', '==', true)
+        .where('time24', '==', timeString24)
         .get();
 
       if (remindersSnapshot.empty) {
-        console.log('[Scheduler] No reminders due at this minute.');
+        console.log(`[Scheduler] No active reminders found for time ${timeString24}.`);
         return null;
       }
 
@@ -46,7 +44,9 @@ exports.checkAndSendReminders = functions.pubsub
       // 2. Process each due reminder in parallel
       const sendPromises = remindersSnapshot.docs.map(async (reminderDoc) => {
         const reminder = reminderDoc.data();
-        const { userId, title, body, type, url } = reminder;
+        const { userId, title, body, type, url, platform } = reminder;
+
+        console.log(`[Scheduler] Processing reminder ${reminderDoc.id} for user ${userId} (type: ${type})`);
 
         // Fetch user's registered FCM token from userData/{userId}
         const userRef = db.collection('userData').doc(userId);
@@ -61,21 +61,52 @@ exports.checkAndSendReminders = functions.pubsub
         const fcmToken = userData.fcmToken;
 
         if (!fcmToken) {
-          console.warn(`[Scheduler] No registered FCM token found for user ${userId}.`);
+          console.warn(`[Scheduler] No registered FCM token found for user ${userId}. Reminders on native devices are handled by local hardware alarms.`);
           return;
         }
 
-        // 3. Assemble and Send the FCM Push Notification payload
+        const isWater = type === 'water';
+        const notifTitle = title || (isWater ? '💧 Hydration Reminder — MediVault' : '💊 Medicine Reminder — MediVault');
+        const notifBody = body || (isWater ? `It's time to drink water! Keep your body hydrated. 🌊` : 'Time for your scheduled medicine dose!');
+        const targetUrl = url || (isWater ? '/drinking-water' : '/tablet-alarm');
+
+        // 3. Assemble and Send the FCM Push Notification payload with high-priority webpush configuration
         const message = {
           token: fcmToken,
           notification: {
-            title: title || 'MediVault Health Alert',
-            body: body || 'Time for your scheduled health check!'
+            title: notifTitle,
+            body: notifBody
           },
           data: {
-            url: url || '/dashboard',
-            type: type || 'general',
-            click_action: 'FLUTTER_NOTIFICATION_CLICK' // standard fallback
+            url: targetUrl,
+            type: type || 'water',
+            click_action: 'FLUTTER_NOTIFICATION_CLICK'
+          },
+          webpush: {
+            headers: {
+              Urgency: 'high'
+            },
+            notification: {
+              title: notifTitle,
+              body: notifBody,
+              icon: '/favicon.svg',
+              badge: '/favicon.svg',
+              requireInteraction: true,
+              vibrate: isWater ? [400, 200, 400] : [500, 250, 500, 250, 800],
+              tag: `medivault-${type || 'remind'}-${todayStr}_${timeString24}`,
+              actions: isWater ? [
+                { action: 'logged', title: '✓ Log 250ml' },
+                { action: 'open', title: '💧 Open App' },
+                { action: 'dismiss', title: 'Dismiss' }
+              ] : [
+                { action: 'taken', title: '✓ Taken' },
+                { action: 'open', title: 'Open App' },
+                { action: 'dismiss', title: 'Dismiss' }
+              ]
+            },
+            fcm_options: {
+              link: targetUrl
+            }
           },
           android: {
             priority: 'high',
@@ -99,7 +130,7 @@ exports.checkAndSendReminders = functions.pubsub
           console.log(`[Scheduler] Push notification sent successfully to ${userId}. FCM ID: ${response}`);
         } catch (sendError) {
           console.error(`[Scheduler] Error sending FCM push to ${userId}:`, sendError);
-          // If the token is invalid (unregistered), optionally remove it to save database reads
+          // If the token is invalid (unregistered), remove it
           if (sendError.code === 'messaging/registration-token-not-registered') {
             console.log(`[Scheduler] Removing expired token for user ${userId}`);
             await userRef.update({

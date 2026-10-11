@@ -47,8 +47,18 @@ self.addEventListener('notificationclick', (event) => {
 
   event.notification.close(); // close the notification banner
 
-  if (action === 'close') {
+  if (action === 'close' || action === 'dismiss') {
     return; // user clicked dismiss
+  }
+
+  // Quick-log water (250ml) action
+  if (action === 'logged') {
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        clients.forEach((c) => c.postMessage({ type: 'QUICK_LOG_WATER', amount: 250 }));
+      })
+    );
+    return;
   }
 
   // Open the targeted URL (e.g. '/tablet-alarm' or '/drinking-water')
