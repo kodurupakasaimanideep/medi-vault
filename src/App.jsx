@@ -452,7 +452,6 @@ function AppShell({ theme, toggleTheme }) {
             <Route path="/temperature" element={<ProtectedRoute><TemperatureMonitor user={pageUser} /></ProtectedRoute>} />
           </Routes>
         </div>
-        <AlarmManager />
         <NotificationPrompt userId={user?.uid} />
         {/* Global Patient Login Modal for Doctors */}
         <PatientLoginModal
@@ -487,7 +486,6 @@ function AppShell({ theme, toggleTheme }) {
         </Routes>
       </main>
       <Footer />
-      <AlarmManager />
     </div>
   );
 }
@@ -514,6 +512,7 @@ function App() {
       <AuthProvider>
         <LanguageProvider>
           <AppShell theme={theme} toggleTheme={toggleTheme} />
+          <AlarmManager />
         </LanguageProvider>
       </AuthProvider>
     </Router>

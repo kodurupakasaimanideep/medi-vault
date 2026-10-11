@@ -149,25 +149,20 @@ export default function Sidebar({ user, onLogout, theme, toggleTheme, isSleepAct
   const SidebarContent = ({ isMobile = false }) => (
     <>
       {/* Logo */}
-      <div className="sidebar-logo" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-          <div className="sidebar-logo-icon">
-            <Activity size={20} color="white" />
-          </div>
-          <span className="sidebar-logo-text" style={{ fontSize: '1.25rem' }}>Medi vault</span>
-          {isMobile && (
-            <button
-              className="sidebar-mobile-close-btn"
-              onClick={() => setMobileOpen(false)}
-              aria-label="Close menu"
-            >
-              <X size={20} />
-            </button>
-          )}
+      <div className="sidebar-logo">
+        <div className="sidebar-logo-icon">
+          <Activity size={20} color="white" />
         </div>
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '2.5rem', fontStyle: 'italic' }}>
-          Made by Saimanideep
-        </div>
+        <span className="sidebar-logo-text" style={{ fontSize: '1.25rem' }}>Medi vault</span>
+        {isMobile && (
+          <button
+            className="sidebar-mobile-close-btn"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       {/* Patient Card */}

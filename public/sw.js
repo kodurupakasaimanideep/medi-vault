@@ -13,9 +13,17 @@
    5. Instant Sound Playback: When user taps notification or opens app, plays rich audio alarm.
 ═══════════════════════════════════════════════════════════════════ */
 
-const SW_VERSION = 'medivault-sw-v7';
+const SW_VERSION = 'medivault-sw-v8';
 const DB_NAME    = 'medivault-sw-db';
 const DB_VERSION = 2;
+
+// Broadcast channel for instantaneous cross-tab/worker audio control
+let swBus = null;
+try {
+  if (typeof BroadcastChannel !== 'undefined') {
+    swBus = new BroadcastChannel('medivault_alarm_bus');
+  }
+} catch (_) {}
 
 // ── Install: activate immediately ──
 self.addEventListener('install', (event) => {
@@ -232,7 +240,22 @@ self.addEventListener('message', (event) => {
     const dateStr = todayStr || new Date().toISOString().split('T')[0];
     event.waitUntil(
       (async () => {
-        // 1. Delete from pending in SW IndexedDB
+        const now = new Date();
+        const curH = String(now.getHours()).padStart(2, '0');
+        const curM = String(now.getMinutes()).padStart(2, '0');
+
+        // 1. Mark alarm in in-memory & IndexedDB tabletAlarms so doCheck never re-fires it
+        tabletAlarms = tabletAlarms.map((a) => {
+          if (!alarmId || a.id === alarmId) {
+            const aTime = a.time ? a.time.split(':').map((x) => String(Number(x)).padStart(2, '0')).join(':') : `${curH}:${curM}`;
+            const key = `${dateStr}_${aTime}`;
+            return { ...a, lastTriggered: dateStr, lastTriggeredKey: key };
+          }
+          return a;
+        });
+        await dbSet('config', 'tabletAlarms', tabletAlarms);
+
+        // 2. Delete from pending in SW IndexedDB
         if (alarmId) {
           await dbDelete('pending', `tablet-${alarmId}-${dateStr}`);
         }
@@ -245,7 +268,7 @@ self.addEventListener('message', (event) => {
           }
         } catch (_) {}
 
-        // 2. Close active tablet notifications in OS notification center
+        // 3. Close active tablet notifications in OS notification center
         try {
           const notifications = await self.registration.getNotifications();
           for (const notif of notifications) {
@@ -264,9 +287,14 @@ self.addEventListener('message', (event) => {
           console.warn('[SW] Error closing notifications on dismiss:', err);
         }
 
-        // 3. Notify all open clients (other tabs/windows) to stop alarm sound immediately
+        // 4. Notify all open clients (other tabs/windows) to stop alarm sound immediately
         const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
         clients.forEach((c) => c.postMessage({ type: 'STOP_ALARM_SOUND', alarmId }));
+
+        // 5. Broadcast to BroadcastChannel
+        try {
+          if (swBus) swBus.postMessage({ type: 'STOP_ALARM', alarmId });
+        } catch (_) {}
       })()
     );
   }
@@ -287,7 +315,7 @@ async function doCheck() {
   const currentHours = now.getHours();
   const currentMinutes = now.getMinutes();
   const currentMin = currentHours * 60 + currentMinutes;
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const minuteKey = `${todayStr}_${currentHours}:${currentMinutes}`;
 
   // ── Tablet Alarms ──
@@ -296,8 +324,9 @@ async function doCheck() {
     const [h, m] = alarm.time.split(':').map(Number);
     const alarmMin = h * 60 + m;
     const diff = currentMin - alarmMin;
+    const normTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    const triggerKey = `${todayStr}_${normTime}`;
 
-    const triggerKey = `${todayStr}_${alarm.time}`;
     // Trigger within 0 to 2 minutes of scheduled time if not fired for this scheduled time
     if (diff >= 0 && diff <= 2 && alarm.lastTriggeredKey !== triggerKey) {
       alarm.lastTriggered = todayStr;
@@ -376,13 +405,13 @@ async function doCheck() {
 ───────────────────────────────────────────────────────────── */
 async function fireTabletNotification(alarm) {
   const soundName = alarm.music || 'Gentle Chime';
-  const tag = `tablet-alarm-${alarm.id}`;
-  await self.registration.showNotification(`💊 Medicine Alarm: ${alarm.tablet}`, {
-    body: `⏰ Time: ${alarm.time} — It's time to take your dose of ${alarm.tablet}!\n🔔 Tap to open MediVault and turn off alarm.`,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+  const tag = `tablet-alarm-${alarm.id}-${Date.now()}`;
+  await self.registration.showNotification('💊 Medicine Reminder!', {
+    body: `${alarm.time} — Time to take: ${alarm.tablet}\n♪ 🎵 ${soundName}`,
+    icon: '/alarm-icon.png',
+    badge: '/badge.png',
     tag,
-    requireInteraction: false,
+    requireInteraction: true,
     silent: false,            // Ensures phone notification ringtone plays
     renotify: true,
     vibrate: [500, 250, 500, 250, 500, 250, 800, 400, 800], // Loud repeating mobile vibration
@@ -395,7 +424,6 @@ async function fireTabletNotification(alarm) {
     actions: [
       { action: 'dismiss', title: '✕ Dismiss Alarm' },
       { action: 'taken',   title: '✓ Taken!' },
-      { action: 'snooze',  title: '⏰ Snooze 5 min' },
     ],
   });
 
@@ -407,9 +435,10 @@ async function fireTabletNotification(alarm) {
         const notifData = notif.data || {};
         if (
           notifData.alarmId === alarm.id ||
-          notif.tag === tag ||
           notif.tag?.includes(`tablet-alarm-${alarm.id}`) ||
-          notif.title?.includes(alarm.tablet)
+          notif.tag?.startsWith('tablet-') ||
+          notif.title?.includes(alarm.tablet) ||
+          notif.title?.includes('Medicine')
         ) {
           notif.close();
         }
@@ -417,6 +446,7 @@ async function fireTabletNotification(alarm) {
       // Broadcast to client tabs that 1 minute expired -> stop sound & close modal
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       clients.forEach((c) => c.postMessage({ type: 'STOP_ALARM_SOUND', alarmId: alarm.id }));
+      if (swBus) swBus.postMessage({ type: 'STOP_ALARM', alarmId: alarm.id });
     } catch (_) {}
   }, 60000);
 }
@@ -424,8 +454,8 @@ async function fireTabletNotification(alarm) {
 async function fireWaterNotification(reminder) {
   return self.registration.showNotification('💧 Hydration Alarm — Time to Drink Water!', {
     body: `🌊 It's ${reminder.time || reminder.time24}! Keep your body hydrated.\nTap to log 250ml water.`,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/alarm-icon.png',
+    badge: '/badge.png',
     tag: `water-reminder-${reminder.id}`,
     requireInteraction: true,
     silent: false,
@@ -448,8 +478,8 @@ async function fireWaterNotification(reminder) {
 async function fireSleepWakeNotification(hoursSlept, targetHours) {
   return self.registration.showNotification('🌅 Good Morning! — MediVault', {
     body: `You've completed ${hoursSlept} hours of sleep (target: ${targetHours}h) 🌙\nTap to record your sleep score.`,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/alarm-icon.png',
+    badge: '/badge.png',
     tag: 'sleep-wake-notification',
     requireInteraction: true,
     silent: false,
@@ -492,8 +522,23 @@ self.addEventListener('notificationclick', (event) => {
   if (action === 'taken' || action === 'dismiss') {
     event.waitUntil(
       (async () => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const curH = String(now.getHours()).padStart(2, '0');
+        const curM = String(now.getMinutes()).padStart(2, '0');
+
         if (data.type === 'tablet') {
+          // 1. Mark alarm in in-memory & IndexedDB tabletAlarms so doCheck never re-fires it
+          tabletAlarms = tabletAlarms.map((a) => {
+            if (!data.alarmId || a.id === data.alarmId) {
+              const aTime = a.time ? a.time.split(':').map((x) => String(Number(x)).padStart(2, '0')).join(':') : `${curH}:${curM}`;
+              const key = `${todayStr}_${aTime}`;
+              return { ...a, lastTriggered: todayStr, lastTriggeredKey: key };
+            }
+            return a;
+          });
+          await dbSet('config', 'tabletAlarms', tabletAlarms);
+
           if (data.alarmId) {
             await dbDelete('pending', `tablet-${data.alarmId}-${todayStr}`);
           }
@@ -502,7 +547,13 @@ self.addEventListener('notificationclick', (event) => {
             const notifs = await self.registration.getNotifications();
             notifs.forEach((n) => {
               const d = n.data || {};
-              if (!data.alarmId || d.alarmId === data.alarmId || n.tag?.includes(`tablet-alarm-${data.alarmId}`)) {
+              if (
+                !data.alarmId ||
+                d.alarmId === data.alarmId ||
+                n.tag?.includes(`tablet-alarm-${data.alarmId}`) ||
+                n.tag?.startsWith('tablet-') ||
+                n.title?.includes('Medicine')
+              ) {
                 n.close();
               }
             });
@@ -511,7 +562,13 @@ self.addEventListener('notificationclick', (event) => {
           // Notify all open client tabs to stop sound and close modal
           const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
           clients.forEach((c) => c.postMessage({ type: 'STOP_ALARM_SOUND', alarmId: data.alarmId }));
+
+          // Broadcast via BroadcastChannel
+          try {
+            if (swBus) swBus.postMessage({ type: 'STOP_ALARM', alarmId: data.alarmId });
+          } catch (_) {}
         }
+
         if (data.type === 'water') {
           if (data.reminderId) {
             await dbDelete('pending', `water-${data.reminderId}-${todayStr}`);
@@ -548,8 +605,8 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Default: Open or Focus the app window & play alarm sound
-  const targetUrl = data.url || '/';
+  // Default: Open or Focus the app window (user tapped notification body)
+  const targetUrl = data.url || '/tablet-alarm';
   event.waitUntil(
     (async () => {
       const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -557,12 +614,6 @@ self.addEventListener('notificationclick', (event) => {
 
       if (existing) {
         await existing.focus();
-        if (data.type === 'tablet' && data.alarm) {
-          existing.postMessage({ type: 'PLAY_ALARM_SOUND', alarm: data.alarm });
-        }
-        if (data.type === 'water' && data.reminder) {
-          existing.postMessage({ type: 'PLAY_WATER_SOUND', reminder: data.reminder });
-        }
         existing.postMessage({ type: 'NAVIGATE', url: targetUrl });
       } else {
         // Open new window on mobile / desktop
@@ -575,6 +626,45 @@ self.addEventListener('notificationclick', (event) => {
       }
     })()
   );
+});
+
+/* ─────────────────────────────────────────────────────────────
+   Notification Close Event (User Swiped Away / Dismissed Notification)
+───────────────────────────────────────────────────────────── */
+self.addEventListener('notificationclose', (event) => {
+  const data = event.notification.data || {};
+  if (data.type === 'tablet') {
+    event.waitUntil(
+      (async () => {
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const curH = String(now.getHours()).padStart(2, '0');
+        const curM = String(now.getMinutes()).padStart(2, '0');
+
+        tabletAlarms = tabletAlarms.map((a) => {
+          if (!data.alarmId || a.id === data.alarmId) {
+            const aTime = a.time ? a.time.split(':').map((x) => String(Number(x)).padStart(2, '0')).join(':') : `${curH}:${curM}`;
+            const key = `${todayStr}_${aTime}`;
+            return { ...a, lastTriggered: todayStr, lastTriggeredKey: key };
+          }
+          return a;
+        });
+        await dbSet('config', 'tabletAlarms', tabletAlarms);
+
+        if (data.alarmId) {
+          await dbDelete('pending', `tablet-${data.alarmId}-${todayStr}`);
+        }
+
+        // Notify client tabs to stop sound and close modal
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clients.forEach((c) => c.postMessage({ type: 'STOP_ALARM_SOUND', alarmId: data.alarmId }));
+
+        if (swBus) {
+          try { swBus.postMessage({ type: 'STOP_ALARM', alarmId: data.alarmId }); } catch (_) {}
+        }
+      })()
+    );
+  }
 });
 
 /* ─────────────────────────────────────────────────────────────

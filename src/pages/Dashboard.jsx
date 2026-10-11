@@ -861,7 +861,6 @@ export default function Dashboard({ user }) {
                 <span className="dash-meta-chip">
                   <Activity size={12} /> {ct('lastCheckup')}: {lastCheckup}
                 </span>
-                <span className="dash-active-badge">{ct('active')}</span>
               </div>
 
               {/* Personal Details Strip from modal — shown when personal details are saved */}

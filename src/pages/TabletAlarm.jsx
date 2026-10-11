@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Mic, MicOff, Music, Music2, Plus, Trash2, Edit2, Play, Square, Pill, Clock } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { ALARM_SOUNDS } from '../components/AlarmManager';
+import { ALARM_SOUNDS, getStoredAlarms } from '../components/AlarmManager';
 import { syncTabletAlarmsToSW, requestNotificationPermission } from '../services/swManager';
 import { syncRemindersToFirestore } from '../services/notificationManager';
 import { scheduleNativeTabletAlarms, requestNativePermissions, isNativeApp } from '../services/nativeNotificationService';
@@ -18,7 +18,9 @@ export default function TabletAlarm({ user }) {
   const [alarms, setAlarms] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAlarm, setNewAlarm] = useState({ id: null, tablet: '', time: '', music: 'Gentle Chime', color: '#8b5cf6', active: true });
-  const [notifPermission, setNotifPermission] = useState(Notification.permission || 'default');
+  const [notifPermission, setNotifPermission] = useState(
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default'
+  );
   
   // Audio Recorder State
   const [isRecording, setIsRecording] = useState(false);
@@ -338,39 +340,35 @@ export default function TabletAlarm({ user }) {
     const uid = user?.id || user?.uid || 'guest';
     const userAlarmKey = `medivault_alarms_${uid}`;
     
-    // Load alarms from local storage (user-scoped first, then fallback to general)
-    const saved = localStorage.getItem(userAlarmKey) || localStorage.getItem('medivault_alarms');
-    let initialAlarms;
-    if (saved) {
-      initialAlarms = JSON.parse(saved);
-      setAlarms(initialAlarms);
-    } else {
+    // Load alarms from multi-key storage so no alarms are lost
+    let initialAlarms = getStoredAlarms(uid);
+    if (!initialAlarms || initialAlarms.length === 0) {
       initialAlarms = [
         { id: Date.now(), tablet: 'Paracetamol', time: '08:00', music: 'Gentle Chime', color: '#8b5cf6', active: true }
       ];
-      setAlarms(initialAlarms);
       localStorage.setItem(userAlarmKey, JSON.stringify(initialAlarms));
       localStorage.setItem('medivault_alarms', JSON.stringify(initialAlarms));
+      localStorage.setItem('medivault_alarms_guest', JSON.stringify(initialAlarms));
     }
+    setAlarms(initialAlarms);
+
     // Sync to SW immediately so background notifications are ready on web
     syncTabletAlarmsToSW(initialAlarms, uid);
+
     // Sync to Native Android Local Notifications if running as app
     if (isNativeApp()) {
       scheduleNativeTabletAlarms(initialAlarms, uid);
       requestNativePermissions().then(perm => {
         if (perm) setNotifPermission(perm);
       });
-    } else {
-      // Ensure notification permission is granted on web
-      requestNotificationPermission().then(perm => {
-        if (perm) setNotifPermission(perm);
-      });
+    } else if (typeof window !== 'undefined' && 'Notification' in window) {
+      setNotifPermission(Notification.permission);
     }
+
     // Sync to Firestore for closed-app notifications
     if (user?.uid) {
       syncRemindersToFirestore(user.uid, 'tablet', initialAlarms);
     }
-
 
     // Load custom voices
     const savedVoices = localStorage.getItem(`medivault_human_voices_${uid}`) || localStorage.getItem('medivault_human_voices');
@@ -384,7 +382,6 @@ export default function TabletAlarm({ user }) {
     const legacyAudio = localStorage.getItem('medivault_custom_alarm');
     if (legacyAudio) {
       const legacyId = 'voice_legacy_1';
-      // If not already migrated
       if (!loadedVoices.find(v => v.id === legacyId)) {
         const newVoice = { id: legacyId, name: 'My Old Recording', url: legacyAudio };
         const updatedVoices = [newVoice, ...loadedVoices];
@@ -392,8 +389,7 @@ export default function TabletAlarm({ user }) {
         localStorage.setItem(`medivault_human_voices_${uid}`, JSON.stringify(updatedVoices));
         localStorage.setItem('medivault_human_voices', JSON.stringify(updatedVoices));
         
-        // Ensure any old alarms pointing to 'Human Voice' are properly redirected
-        let currentAlarms = JSON.parse(localStorage.getItem(userAlarmKey) || '[]');
+        let currentAlarms = getStoredAlarms(uid);
         let needsMigration = false;
         const migratedAlarms = currentAlarms.map(a => {
           if (a.music === 'Human Voice' || a.music === 'Custom Vocals') {
@@ -404,8 +400,9 @@ export default function TabletAlarm({ user }) {
         });
         if (needsMigration) {
            setAlarms(migratedAlarms);
-           localStorage.setItem(userAlarmKey, JSON.stringify(migratedAlarms));
+           if (uid && uid !== 'guest') localStorage.setItem(userAlarmKey, JSON.stringify(migratedAlarms));
            localStorage.setItem('medivault_alarms', JSON.stringify(migratedAlarms));
+           localStorage.setItem('medivault_alarms_guest', JSON.stringify(migratedAlarms));
         }
       }
       localStorage.removeItem('medivault_custom_alarm');
@@ -421,10 +418,18 @@ export default function TabletAlarm({ user }) {
   const saveAlarms = (updated) => {
     const uid = user?.id || user?.uid || 'guest';
     setAlarms(updated);
-    localStorage.setItem(`medivault_alarms_${uid}`, JSON.stringify(updated));
+    if (uid && uid !== 'guest') {
+      localStorage.setItem(`medivault_alarms_${uid}`, JSON.stringify(updated));
+    }
     localStorage.setItem('medivault_alarms', JSON.stringify(updated));
+    localStorage.setItem('medivault_alarms_guest', JSON.stringify(updated));
+
     // Push updated alarms to service worker for web background notifications
     syncTabletAlarmsToSW(updated, uid);
+
+    // Broadcast to open components / AlarmManager
+    window.dispatchEvent(new CustomEvent('medivault_alarms_updated', { detail: updated }));
+
     // Schedule native Android alarms when running in Capacitor app
     if (isNativeApp()) {
       scheduleNativeTabletAlarms(updated, uid);
@@ -643,25 +648,8 @@ export default function TabletAlarm({ user }) {
             what={ct('aboutWhat')}
             howToUse={ct('aboutHow')}
             importance={ct('aboutWhy')}
+            style={{ position: 'static', margin: 0 }}
           />
-          <button
-            onClick={() => {
-              const testAlarm = alarms.find(a => a.active) || alarms[0] || {
-                id: Date.now(),
-                tablet: 'Vitamin C',
-                time: new Date().toTimeString().slice(0, 5),
-                music: 'Dreamscape',
-                color: '#a855f7',
-                active: true,
-              };
-              const event = new CustomEvent('medivault_test_alarm', { detail: testAlarm });
-              window.dispatchEvent(event);
-            }}
-            className="tablet-alarm-btn-test"
-            title="Preview the exact Medicine Reminder modal on screen"
-          >
-            <Bell size={16}/> Test Popup
-          </button>
           <button 
             onClick={() => {
               setNewAlarm({ id: null, tablet: '', time: '', music: 'Gentle Chime', color: '#3b82f6', active: true });

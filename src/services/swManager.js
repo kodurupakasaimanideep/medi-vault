@@ -54,8 +54,9 @@ export async function registerServiceWorker() {
       await reg.update();
     } catch (_) {}
 
-    // Listen for ALL messages from the SW
+    // Listen for ALL messages from the SW (both addEventListener and direct onmessage)
     navigator.serviceWorker.addEventListener('message', handleSwMessage);
+    navigator.serviceWorker.onmessage = handleSwMessage;
 
     // Try to register Periodic Background Sync (Android / Chrome)
     await tryRegisterPeriodicSync(reg);
@@ -185,14 +186,18 @@ function handleSwMessage(event) {
     }
 
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const triggerKey = alarm?.time ? `${todayStr}_${alarm.time}` : todayStr;
       const userId   = getActiveUserId();
       const alarmKey = userId ? `medivault_alarms_${userId}` : 'medivault_alarms';
-      const alarms   = JSON.parse(localStorage.getItem(alarmKey) || '[]');
+      const alarms   = JSON.parse(localStorage.getItem(alarmKey) || localStorage.getItem('medivault_alarms') || '[]');
       const updated  = alarms.map((a) =>
-        a.id === alarm.id ? { ...a, lastTriggered: todayStr } : a
+        a.id === alarm.id ? { ...a, lastTriggered: todayStr, lastTriggeredKey: triggerKey } : a
       );
-      localStorage.setItem(alarmKey, JSON.stringify(updated));
+      if (userId) localStorage.setItem(alarmKey, JSON.stringify(updated));
+      localStorage.setItem('medivault_alarms', JSON.stringify(updated));
+      localStorage.setItem('medivault_alarms_guest', JSON.stringify(updated));
     } catch (_) {}
   }
 
@@ -263,10 +268,22 @@ async function getController() {
 }
 
 async function sendToSW(message) {
-  const controller = await getController();
-  if (controller) {
-    controller.postMessage(message);
-    return true;
+  try {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return false;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage(message);
+      return true;
+    }
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((resolve) => setTimeout(() => resolve(null), 1000))
+    ]);
+    if (reg?.active) {
+      reg.active.postMessage(message);
+      return true;
+    }
+  } catch (err) {
+    console.warn('[SW] sendToSW error:', err);
   }
   return false;
 }
